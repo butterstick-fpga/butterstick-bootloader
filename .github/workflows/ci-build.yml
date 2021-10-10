@@ -16,7 +16,9 @@ jobs:
         submodules: false # Note: not Recursive (we don't need GB's of tinyusb deps)
 
     - name: Checkout Submodule
-      run: git submodule update --init
+      run: |
+        git submodule update --init
+        git submodule update --init --recursive -- gateware/deps/pythondata-software-picolibc
 
     - name: YosysHQ setup
       uses: YosysHQ/setup-oss-cad-suite@v1
@@ -29,8 +31,8 @@ jobs:
         python3 -m pip install setuptools
         python3 -m pip install pycrc
         python3 -m pip install wheel
-        python3 -m pip install Sphinx 
-        python3 -m pip install sphinxcontrib-wavedrom 
+        python3 -m pip install construct
+        python3 -m pip install Sphinx sphinxcontrib-wavedrom meson ninja setuptools_scm Jinja2
         
     # - name: patch migen bug
     #   working-directory: ./gateware/deps/migen
@@ -41,6 +43,8 @@ jobs:
       working-directory: ./gateware
       run: |
         python3 butterstick-bitstream.py
+      env:
+        LUNA_PLATFORM: "luna.gateware.platform.luna_r0_4:LUNAPlatformRev0D4"
 
 #    - name: Upload build
 #      uses: actions/upload-artifact@v2

@@ -57,19 +57,17 @@ else
 	$(PYTHON) -m litex.soc.software.mkmscimg $@
 endif
 
-oc-fw.elf: ../libcompiler_rt/libcompiler_rt.a \
-	../libbase/libbase-nofloat.a \
-	../liblitedram/liblitedram.a \
-	../liblitespi/liblitespi.a \
-	$(OBJECTS)
-	$(LD) $(LDFLAGS) -L$(BUILDINC_DIRECTORY)/generated -T $(FW_DIRECTORY)/linker.ld -N -o $@ \
+oc-fw.elf: $(FW_DIRECTORY)/linker.ld $(OBJECTS)
+
+vpath %.a $(PACKAGES:%=../%)
+
+%.elf: $(LIBS:%=%.a)
+	$(CC) $(LDFLAGS) -T $(FW_DIRECTORY)/linker.ld -N -o $@ \
 		$(OBJECTS) \
-		-L../libcompiler_rt \
-		-L../liblitedram \
-		-L../libbase \
-		-L../liblitespi \
-		-llitedram -lbase-nofloat -lcompiler_rt \
-		-Map=fw.map, -gc-sections
+		$(PACKAGES:%=-L../%) \
+		-Wl,--whole-archive \
+		-Wl,--gc-sections \
+		$(LIBS:lib%=-l%) \
 		
 ifneq ($(OS),Windows_NT)
 	chmod -x $@

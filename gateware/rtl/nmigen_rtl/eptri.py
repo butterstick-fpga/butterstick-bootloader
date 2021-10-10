@@ -13,18 +13,11 @@ from nmigen import Elaboratable, Module, ResetSignal, Signal
 from nmigen.hdl.rec import Record
 from nmigen_soc import wishbone
 
-from lambdasoc.periph import Peripheral
-from lambdasoc.periph.serial import AsyncSerialPeripheral
-from lambdasoc.periph.timer import TimerPeripheral
-
-from luna.gateware.soc import SimpleSoC
-
 from luna.gateware.usb.usb2.device import USBDevice, USBDeviceController
 from luna.gateware.architecture.car import PHYResetController
 from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOInterface, OutFIFOInterface
 
 from nmigen.hdl.rec import Direction
-#from nmigen.hdl.rec import DIR_FANIN, DIR_FANOUT, DIR_NONE
 
 CLOCK_FREQUENCIES_MHZ = {
     'sync': 60

@@ -3,23 +3,16 @@
 
 
 from migen import *
-from migen.genlib import fifo
-from migen.genlib import cdc
 
-from litex.soc.integration.doc import AutoDoc, ModuleDoc
-from litex.soc.interconnect import stream
 from litex.soc.interconnect import wishbone
-from litex.soc.interconnect import csr_eventmanager as ev
-from litex.soc.interconnect.csr import CSRStorage, CSRStatus, CSRField, AutoCSR
 
-from litex.build.io import SDRTristate, DDROutput, SDROutput, SDRInput
-
-from .luna import LunaEpTri
+from litex.build.io import DDROutput
+from rtl.nmigen_rtl.eptri import LunaEpTri
 
 
 from litex.soc.interconnect.csr_eventmanager import *
 
-class LunaEpTriWrapper(Module, AutoCSR, AutoDoc):
+class LunaEpTriWrapper(Module):
 
     def __init__(self, platform):
         self.platform = platform

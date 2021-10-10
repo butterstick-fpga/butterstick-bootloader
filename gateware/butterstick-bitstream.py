@@ -11,56 +11,34 @@
 LX_DEPENDENCIES = ["riscv", "nextpnr-ecp5", "yosys"]
 
 # Import lxbuildenv to integrate the deps/ directory
-from functools import cache
 import lxbuildenv
 
 
 
-import sys
 import os
 import shutil
 import argparse
 import subprocess
 
-import inspect
 
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
-from rtl.platform import butterstick_r1d0
 
 from litex.build.lattice.trellis import trellis_args, trellis_argdict
 
-from litex.build.generic_platform import IOStandard, Subsignal, Pins, Misc
-
-from litex.soc.cores.clock import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 
 from litex.soc.interconnect.csr import *
 
+from litex.soc.cores.clock import *
+from litex.soc.cores.clock.common import period_ns
 from litex.soc.cores.led import LedChaser
-
-#from litedram.modules import MT41K64M16, MT41K128M16, MT41K256M16, MT41K512M16
-#from litedram.phy import ECP5DDRPHY
-
-from litex.soc.cores.spi import SPIMaster
-from litex.soc.cores.bitbang import I2CMaster
 from litex.soc.cores.spi_flash import SpiFlashDualQuad
 
-from litex.soc.doc import generate_docs
-
-
-from migen.genlib.cdc import MultiReg
-
-from rtl.rgb import RGB
-from litex.soc.cores import spi_flash
-from litex.soc.cores.gpio import GPIOTristate, GPIOOut, GPIOIn
-
-
-from litex.soc.cores.clock.common import period_ns
-
-from rtl.luna_eptri import LunaEpTriWrapper
+from rtl.platform import butterstick_r1d0
+from rtl.eptri import LunaEpTriWrapper
 
 
 # CRG ---------------------------------------------------------------------------------------------
