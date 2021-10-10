@@ -1,0 +1,99 @@
+name: ci-build
+
+on:
+  push:
+
+
+jobs:
+  # Main build, creates firmware update image
+  build-soc:
+    runs-on: ubuntu-latest
+    steps:
+    # Checkout Repository
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: false # Note: not Recursive (we don't need GB's of tinyusb deps)
+
+    - name: Checkout Submodule
+      run: git submodule update --init
+
+    - name: YosysHQ setup
+      uses: YosysHQ/setup-oss-cad-suite@v1
+      
+    - name: RISC-V GNU setup
+      uses: gregdavill/setup-riscv-gnu-toolchain@v1.0
+    
+    - name: configure python
+      run: |
+        python3 -m pip install setuptools
+        python3 -m pip install pycrc
+        python3 -m pip install wheel
+        python3 -m pip install Sphinx 
+        python3 -m pip install sphinxcontrib-wavedrom 
+        
+    # - name: patch migen bug
+    #   working-directory: ./gateware/deps/migen
+    #   run: |
+    #     git apply ../migen-asyncmem.patch
+
+    - name: Litex build
+      working-directory: ./gateware
+      run: |
+        python3 butterstick-bitstream.py
+
+#    - name: Upload build
+#      uses: actions/upload-artifact@v2
+#      with:
+#        name: DiVA build Folder
+#        path: ${{ github.workspace }}/gateware/build
+
+    - name: Upload dfu update file
+      uses: actions/upload-artifact@v2
+      with:
+        name: bootloader binary
+        path: ${{ github.workspace }}/gateware/build/butterstick_r1d0/gateware/butterstick_r1d0.dfu
+  
+  # release:
+  #   name: Create Release
+  #   needs: build-sw
+  #   if: ${{ contains( github.ref, 'refs/tags/') }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     #- name: Checkout code
+  #     #  uses: actions/checkout@v2
+  #     - name: Download DFU Binary
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: DiVA firmware update
+
+  #     - name: Download DFU Binary
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: Windows update tool
+
+  #     - name: Create Release
+  #       id: create-release
+  #       uses: actions/create-release@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+  #       with:
+  #         tag_name: ${{ github.ref }}
+  #         release_name: Release ${{ github.ref }}
+  #         body: |
+  #           Changes in this Release
+  #           - First Change
+  #           - Second Change
+  #         draft: true
+  #         prerelease: false
+  #     - name: Upload Release Asset
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create-release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+  #         asset_path: ./DiVA.dfu
+  #         asset_name: DiVA.dfu
+  #         asset_content_type: application/octet-stream
+
+    
