@@ -1,7 +1,4 @@
-#
-# This file is part of LiteX.
-#
-# Copyright (c) 2021 
+# Copyright (c) 2021 Gregory Davill <greg.davill@gmail.com> 
 # SPDX-License-Identifier: BSD-2-Clause
 
 from migen import *
@@ -9,29 +6,23 @@ from migen.genlib.misc import WaitTimer
 
 from litex.soc.interconnect.csr import *
 
-# Led Chaser ---------------------------------------------------------------------------------------
-
-_CHASER_MODE  = 0
-_CONTROL_MODE = 1
+# Led Multiplex module ---------------------------------------------------------------------------------------
 
 class PDM(Module):
     def __init__(self, width=8):
         self.level = level = Signal(width)
         self.out = out = Signal(1)
-
-        # Gamma correction
         sigma = Signal(width+1)
 
         self.comb += out.eq(sigma[width])
         self.sync += sigma.eq(sigma + Cat(level, out, out))
 
-
 class Leds(Module, AutoCSR):
     def __init__(self, anode, cathode):
-        #self.pads = pads
         
         count = Signal(3, reset=1)
         prescale = Signal(max=10000)
+        blanking_duration = Signal(8)
 
         self.sync += [
             If(prescale == 0,
@@ -39,14 +30,22 @@ class Leds(Module, AutoCSR):
                 prescale.eq(10000),
             ),
             prescale.eq(prescale - 1),
+
+            If(prescale == 128,
+                blanking_duration.eq(255)
+            ),
+            If(blanking_duration != 0,
+                blanking_duration.eq(blanking_duration - 1)
+            )
         ]
 
         for n in range(7):
-            _csr,_pdm = CSRStorage(32, name="out{}".format(n)), PDM(10)
+            _csr,_pdm = CSRStorage(32, name="out{}".format(n)), ResetInserter()(PDM(10))
             self.submodules += _pdm
             setattr(self, "_out{}".format(n), _csr)
             self.comb += [
                 anode[n].eq(_pdm.out),
+                _pdm.reset.eq(blanking_duration != 0),
             ]
             self.sync += [
                 If(count[0], _pdm.level.eq(_csr.storage[0:10])),
