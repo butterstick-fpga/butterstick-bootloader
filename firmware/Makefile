@@ -11,9 +11,7 @@ CFLAGS += -DI2C_FREQ_HZ=400
 
 TINYUSB_DIR := $(FW_DIRECTORY)/deps/tinyusb
 
-# $(TINYUSB_DIR)/hw/bsp/luna_eptri/luna_eptri.c 
-TINYUSB_SRC := 	$(TINYUSB_DIR)/src/portable/luna/eptri/dcd_eptri.c \
-				$(TINYUSB_DIR)/src/tusb.c \
+TINYUSB_SRC := 	$(TINYUSB_DIR)/src/tusb.c \
 				$(TINYUSB_DIR)/src/device/usbd.c \
 				$(TINYUSB_DIR)/src/device/usbd_control.c \
 				$(TINYUSB_DIR)/src/common/tusb_fifo.c \
@@ -29,12 +27,14 @@ CFLAGS += 	-I$(TINYUSB_DIR)/hw/bsp/luna_eptri/include \
 			-fdata-sections -ffunction-sections -fsingle-precision-constant -fno-strict-aliasing \
 			-DCFG_TUSB_DEBUG=1
 
-vpath %.c $(dir $(TINYUSB_SRC)) $(FW_DIRECTORY)
+vpath %.c $(dir $(TINYUSB_SRC)) $(FW_DIRECTORY) $(FW_DIRECTORY)/luna/eptri
+vpath %.S $(FW_DIRECTORY)
 
 OBJECTS =  	crt0.o \
 			main.o	\
 			sleep.o \
 			flash.o \
+			dcd_eptri.o \
 			usb_descriptors.o 	
 	   		
 
@@ -79,7 +79,7 @@ endif
 %.o: %.c
 	$(compile)
 
-%.o:  $(FW_DIRECTORY)/%.S
+%.o: %.S
 	$(assemble)
 
 

@@ -128,12 +128,6 @@ class BaseSoC(SoCCore):
        
         "gpio_led":       10,
         "gpio":           11,
-        "self_reset":     12,
-        "version":        14,
-        "lxspi":          15,
-        "button":         17,
-        "spi":            18,
-        "i2c":            19,
     }
     csr_map.update(SoCCore.csr_map)
 
@@ -142,14 +136,14 @@ class BaseSoC(SoCCore):
         "sram":     0x10000000,  # (default shadow @0xa0000000)
         "spiflash": 0x20000000,  # (default shadow @0xa0000000)
         "main_ram": 0x40000000,  # (default shadow @0xc0000000)
-        "csr":      0xe0000000,  # (default shadow @0xe0000000)
-        "usb":      0xf0000000,
+        "csr":      0xf0000000,  # (default shadow @0xe0000000)
+        "usb":      0xe0001000,
     }
     mem_map.update(SoCCore.mem_map)
 
     interrupt_map = {
-        "timer0": 2,
-        #"usb": 3,
+        "timer0": 0,
+        "uart": 1,
     }
     interrupt_map.update(SoCCore.interrupt_map)
 
@@ -240,7 +234,7 @@ class BaseSoC(SoCCore):
         self.add_csr("leds")
         self.comb += led.c.eq(0b100)
 
-        self.submodules.usb = LunaEpTriWrapper(self.platform)
+        self.submodules.usb = LunaEpTriWrapper(self.platform, base_addr=0xe000_0000)
         self.add_memory_region("usb", 0xe000_0000, 0x1_0000, type="");
         self.add_wb_slave(0xe000_0000, self.usb.bus)
         for name, irq in self.usb.irqs.items():

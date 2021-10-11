@@ -14,7 +14,7 @@ from litex.soc.interconnect.csr_eventmanager import *
 
 class LunaEpTriWrapper(Module):
 
-    def __init__(self, platform):
+    def __init__(self, platform, base_addr=0):
         self.platform = platform
         
         ulpi_pads = platform.request('ulpi')
@@ -25,19 +25,19 @@ class LunaEpTriWrapper(Module):
         self.specials += DDROutput(~reset ,0, ulpi_pads.clk, ClockSignal("usb"))
         self.specials += ulpi_data.get_tristate(ulpi_pads.data)
         
-        self.wrapper("LunaEpTri", LunaEpTri())
+        self.wrapper("LunaEpTri", LunaEpTri(base_addr))
 
         self.params = dict(
             # Clock / Reset
             i_usb_clk   = ClockSignal("usb"),
-            #o_usb_rst   = ResetSignal("usb"),
+            #o_usb_rst   = ResetSignal("usb"), # Driven internally by PHYResetController
             i_clk   = ClockSignal("sys"),
             i_rst   = ResetSignal("sys"),
 
             o_ulpi__data__o = ulpi_data.o,
             o_ulpi__data__oe = ulpi_data.oe,
             i_ulpi__data__i = ulpi_data.i,
-            #o_ulpi__clk__o = clk,
+            #o_ulpi__clk__o = clk, # Driven externally with DDROutput
             o_ulpi__stp = ulpi_pads.stp,
             i_ulpi__nxt__i = ulpi_pads.nxt,
             i_ulpi__dir__i = ulpi_pads.dir,
@@ -47,7 +47,7 @@ class LunaEpTriWrapper(Module):
         self.bus = bus = wishbone.Interface()
 
         self.params.update( 
-            i__bus__adr = bus.adr[:24],
+            i__bus__adr = bus.adr,
             i__bus__stb = bus.stb,
             i__bus__cyc = bus.cyc,
             i__bus__we = bus.we,
@@ -58,6 +58,7 @@ class LunaEpTriWrapper(Module):
         )
 
 
+        # Wire up IRQs 
         self.irqs = irqs = {}
         irqs['device_controller'] = Signal()
         irqs['setup'] = Signal()
@@ -89,6 +90,16 @@ class LunaEpTriWrapper(Module):
 
         self.platform.add_source(verilog_file)
 
+        # Create resource.h file
+        #elaboratable.soc.log_resources()
+        resource_file = f"luna_usb.h"
+    
+        vdir = os.path.join(os.getcwd(), "build", self.platform.name, "software", "include", "generated")
+        os.makedirs(vdir, exist_ok=True)
+
+        resource_file = os.path.join(vdir, resource_file)
+        with open(resource_file, 'w') as f:
+            self.nmigen_module.soc.generate_c_header(macro_name="LUNA_EPTRI", file=f, platform_name="LiteX Butterstick Bootloader")
 
 
 
@@ -108,13 +119,6 @@ class LunaEpTriWrapper(Module):
 
         self.verilog = verilog.convert(elaboratable, name=name, ports=ports, strip_internal_attrs=False)
         self.verilog_name = name
-        # verilog_file = f"build/wrapper_{name}.v"
+
+        self.nmigen_module = elaboratable
         
-        # vdir = os.path.join(os.getcwd(), "build", platform.name)
-        # os.makedirs(vdir, exist_ok=True)
-
-        # with open(verilog_file, "w") as f:
-        #     f.write(verilog_text)
-
-        # platform.add_source(os.path.join(vdir, f"wrapper_{name}.v"))
-

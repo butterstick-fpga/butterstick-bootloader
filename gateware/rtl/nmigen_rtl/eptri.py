@@ -19,9 +19,9 @@ from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOIn
 
 from nmigen.hdl.rec import Direction
 
-CLOCK_FREQUENCIES_MHZ = {
-    'sync': 60
-}
+
+from .blanksoc import BlankSoC
+
 
 
 class LunaEpTri(Elaboratable):
@@ -32,7 +32,7 @@ class LunaEpTri(Elaboratable):
     USB_IN_ADDRESS = 0x0000_2000
     USB_OUT_ADDRESS = 0x0000_3000
 
-    def __init__(self):
+    def __init__(self, base_addr=0):
 
         # Create a stand-in for our ULPI.
         self.ulpi = Record(
@@ -47,42 +47,42 @@ class LunaEpTri(Elaboratable):
             ]
         )
 
-        self.bus_decoder = wishbone.Decoder(
-            addr_width=30, data_width=32, granularity=8)
-        self.memory_map = self.bus_decoder.bus.memory_map
-        self.bus = self.bus_decoder.bus
+        self.soc = soc = BlankSoC()
+        self.bus = self.soc.bus_decoder.bus
 
         self.usb_holdoff = Signal()
  
         # ... a core USB controller ...
         self.usb_device_controller = USBDeviceController()
-        self.add_peripheral(self.usb_device_controller, addr=self.USB_CORE_ADDRESS)
+        self.add_peripheral(self.usb_device_controller, addr=self.USB_CORE_ADDRESS + base_addr)
 
         # ... our eptri peripherals.
         self.usb_setup = SetupFIFOInterface()
-        self.add_peripheral(self.usb_setup, addr=self.USB_SETUP_ADDRESS)
+        self.add_peripheral(self.usb_setup, addr=self.USB_SETUP_ADDRESS + base_addr)
 
         self.usb_in_ep = InFIFOInterface()
-        self.add_peripheral(self.usb_in_ep, addr=self.USB_IN_ADDRESS)
+        self.add_peripheral(self.usb_in_ep, addr=self.USB_IN_ADDRESS + base_addr)
 
         self.usb_out_ep = OutFIFOInterface()
-        self.add_peripheral(self.usb_out_ep, addr=self.USB_OUT_ADDRESS)
+        self.add_peripheral(self.usb_out_ep, addr=self.USB_OUT_ADDRESS + base_addr)
 
     def add_peripheral(self, p, **kwargs):
         """ Adds a peripheral to the SoC.
 
         For now, this is identical to adding a peripheral to the SoC's wishbone bus.
-        For convenience, returns the peripheral provided.
         """
 
         # Add the peripheral to our bus...
         interface = getattr(p, 'bus')
-        self.bus_decoder.add(interface, **kwargs)
+        self.soc.bus_decoder.add(interface, **kwargs)
 
-        # ... add its IRQs to the IRQ controller...
+        # ... add its IRQs to top level signals...
         try:
             irq_line = getattr(p, 'irq')
             setattr(self, irq_line.name, irq_line)
+
+            self.soc._irqs[self.soc._next_irq_index] = p
+            self.soc._next_irq_index += 1
         except (AttributeError, NotImplementedError):
 
             # If the object has no associated IRQs, continue anyway.
@@ -91,16 +91,18 @@ class LunaEpTri(Elaboratable):
 
     def elaborate(self, platform):
         m = Module()
-        m.submodules.bus_decoder = self.bus_decoder
+        m.submodules.bus_decoder = self.soc.bus_decoder
 
-        # Generate our domain clocks/resets.
-        #m.submodules.car = platform.clock_domain_generator(clock_frequencies=CLOCK_FREQUENCIES_MHZ)
+        # Dummy submodule to remove warning.
+        # Probably a better way ta handle this
+        m.submodules.soc = self.soc
 
         # Create our USB device.
         m.submodules.usb_controller = self.usb_device_controller
         m.submodules.usb = usb = USBDevice(bus=self.ulpi)
 
         
+        # Generate our domain clocks/resets.
         m.submodules.usb_reset = controller = PHYResetController(clock_frequency=60e6, reset_length=10e-3, stop_length=2e-4, power_on_reset=True)
         m.d.comb += [
             ResetSignal("usb")  .eq(controller.phy_reset),
