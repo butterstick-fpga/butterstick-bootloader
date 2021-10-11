@@ -3,7 +3,7 @@
 	url = https://github.com/greatscottgadgets/luna.git
 [submodule "firmware/deps/tinyusb"]
 	path = firmware/deps/tinyusb
-	url = https://github.com/gregdavill/tinyusb.git
+	url = https://github.com/hathach/tinyusb.git
 	branch = luna_riscv
 [submodule "gateware/deps/migen"]
 	path = gateware/deps/migen

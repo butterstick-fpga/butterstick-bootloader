@@ -119,7 +119,7 @@ static uint16_t _desc_str[32];
 char hex(uint8_t d){
   if(d <= 0x9)
     return d + '0';
-  return d - 10 + 'A';
+  return d - 10 + 'a';
 }
 
 // Invoked when received GET STRING DESCRIPTOR request
@@ -140,13 +140,19 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
     spiInit();
     spi_read_uuid(uuid);
-    chr_count = 16;
+    chr_count = 19;
 
+    uint16_t* s = &_desc_str[1];
     // Convert ASCII string into UTF-16
     for(uint8_t i=0; i<8; i++)
     {
-      _desc_str[1+i*2] = hex(uuid[i] >> 4);
-      _desc_str[2+i*2] = hex(uuid[i] & 0xF);
+      /* Add dashes every 2 bytes */
+      if(i && !(i & 1)){
+        *s++ = '-';
+      }
+
+      *s++ = hex(uuid[i] >> 4);
+      *s++ = hex(uuid[i] & 0xF);
     }
   }
   else

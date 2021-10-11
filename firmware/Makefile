@@ -19,9 +19,7 @@ TINYUSB_SRC := 	$(TINYUSB_DIR)/src/tusb.c \
 
 TINYUSB_OBJ := $(notdir $(TINYUSB_SRC:.c=.o))
 
-CFLAGS += 	-I$(TINYUSB_DIR)/hw/bsp/luna_eptri/include \
-			-I$(TINYUSB_DIR)/hw/bsp/luna_eptri \
-			-Isrc -I$(TINYUSB_DIR)/hw \
+CFLAGS += 	-I$(TINYUSB_DIR)/hw \
 			-I$(TINYUSB_DIR)/src \
 			-DCFG_TUSB_MCU=OPT_MCU_LUNA_EPTRI \
 			-fdata-sections -ffunction-sections -fsingle-precision-constant -fno-strict-aliasing \
@@ -35,13 +33,9 @@ OBJECTS =  	crt0.o \
 			sleep.o \
 			flash.o \
 			dcd_eptri.o \
-			usb_descriptors.o 	
-	   		
+			usb_descriptors.o 		   		
 
 OBJECTS += $(TINYUSB_OBJ)
-
-
-
 
 all: oc-fw.bin
 	$(PYTHON) -m litex.soc.software.memusage oc-fw.elf $(CURDIR)/../include/generated/regions.ld $(TRIPLE)
