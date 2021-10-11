@@ -20,7 +20,8 @@ class LunaEpTriWrapper(Module):
         ulpi_pads = platform.request('ulpi')
         ulpi_data = TSTriple(8)
         reset = Signal()
-        self.comb += ulpi_pads.rst.eq(~ResetSignal("usb"))
+        if hasattr(ulpi_pads, "rst"):
+            self.comb += ulpi_pads.rst.eq(~ResetSignal("usb"))
 
         self.specials += DDROutput(~reset ,0, ulpi_pads.clk, ClockSignal("usb"))
         self.specials += ulpi_data.get_tristate(ulpi_pads.data)
