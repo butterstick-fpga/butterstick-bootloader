@@ -39,6 +39,7 @@ from litex.soc.cores.spi_flash import SpiFlashDualQuad
 
 from rtl.platform import butterstick_r1d0
 from rtl.eptri import LunaEpTriWrapper
+from rtl.rgb import Leds
 
 
 # CRG ---------------------------------------------------------------------------------------------
@@ -228,11 +229,8 @@ class BaseSoC(SoCCore):
 
         # Leds -------------------------------------------------------------------------------------
         led = platform.request("led_rgb_multiplex")
-        self.submodules.leds = LedChaser(
-            pads         = led.a,
-            sys_clk_freq = sys_clk_freq)
+        self.submodules.leds = Leds(led.a, led.c)
         self.add_csr("leds")
-        self.comb += led.c.eq(0b100)
 
         self.submodules.usb = LunaEpTriWrapper(self.platform, base_addr=0xe000_0000)
         self.add_memory_region("usb", 0xe000_0000, 0x1_0000, type="");

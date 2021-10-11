@@ -110,21 +110,11 @@ int main(int i, char **c)
 	irq_setie(1);
 	uart_init();
 
+	//leds_out_write(0);
+
 	msleep(25);
 
 	timer_init();
-
-	printf("\n");
-
-	printf("butterstick-fpga-dfu\n");
-	printf("build date: "__DATE__
-		   " "__TIME__
-		   "\n");
-	printf("git hash: "__GIT_SHA1__
-		   "\n");
-
-	printf("err: %u\n", ctrl_bus_errors_read());
-
 	tusb_init();
 
 	while (1)
@@ -144,9 +134,13 @@ void led_blinking_task(void)
 	// Blink every interval ms
 	if (board_millis() - start_ms < blink_interval_ms)
 		return; // not enough time
-	start_ms += blink_interval_ms;
+	start_ms += 10;
 
-	leds_out_write(led_state);
+	leds_out0_write((leds_out0_read() + 3) & 0x3FF);
+	leds_out1_write((((leds_out1_read() >> 10) + 5) & 0x3FF) << 10);
+	leds_out2_write((board_millis() & 0x3FF) << 20UL);
+	
+	//leds_out_write(led_state);
 	//board_led_write(led_state);
 
 	led_state = 1 - led_state; // toggle
