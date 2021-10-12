@@ -114,9 +114,11 @@ class LunaEpTriWrapper(Module):
         ports = []
 
         # Patch through all Records/Ports
-        for port_name, port in vars(elaboratable).items():
-            if not port_name.startswith("_") and isinstance(port, (Signal, Record)):
-                ports += port._lhs_signals()
+        for attr in dir(elaboratable):
+            if not attr.startswith("_"):
+                obj = getattr(elaboratable, attr)
+                if isinstance(obj, (Signal, Record)):
+                    ports += obj._lhs_signals()
 
         self.verilog = verilog.convert(elaboratable, name=name, ports=ports, strip_internal_attrs=False)
         self.verilog_name = name
