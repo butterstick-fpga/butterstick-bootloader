@@ -23,12 +23,12 @@
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
 //--------------------------------------------------------------------+
-const char* upload_image[2]=
-{
-  "Hello world from TinyUSB DFU! - Partition 0",
-  "Hello world from TinyUSB DFU! - Partition 1"
+const uint32_t alt_offsets[] = {
+	0x400000,
+	0x800000,
 };
 
+static int complete_timeout;
 
 /* Blink pattern
  * - 1000 ms : device should reboot
@@ -121,24 +121,51 @@ int main(int i, char **c)
 	{
 		tud_task(); // tinyusb device task
 		led_blinking_task();
+
+		if(complete_timeout){
+			static uint32_t start_ms = 0;
+
+			// timeout in ms
+			if (board_millis() != start_ms)
+			{
+				start_ms = board_millis();
+
+				complete_timeout--;
+				if(complete_timeout == 0)
+					break;
+			}
+				
+		}
+	}
+
+	while(1){
+		reset_out_write(1);
 	}
 
 	return 0;
 }
 
+const uint8_t values[] = {127, 152, 176, 198, 218, 233, 245, 253, 255, 253, 245, 233, 218, 198, 176, 152, 127, 102, 78, 56, 37, 21, 9, 2, 0, 2, 9, 21, 37, 56, 78, 102};
+const uint16_t _gamma[] = {0, 0, 0, 1, 2, 2, 3, 4, 5, 6, 7, 9, 10, 11, 13, 14, 16, 17, 19, 20, 22, 24, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 52, 54, 56, 58, 61, 63, 65, 68, 70, 73, 75, 78, 80, 83, 86, 88, 91, 94, 96, 99, 102, 105, 108, 110, 113, 116, 119, 122, 125, 128, 131, 134, 137, 140, 143, 147, 150, 153, 156, 159, 163, 166, 169, 173, 176, 179, 183, 186, 189, 193, 196, 200, 203, 207, 210, 214, 218, 221, 225, 228, 232, 236, 240, 243, 247, 251, 255, 258, 262, 266, 270, 274, 278, 281, 285, 289, 293, 297, 301, 305, 309, 313, 317, 322, 326, 330, 334, 338, 342, 346, 351, 355, 359, 363, 368, 372, 376, 381, 385, 389, 394, 398, 402, 407, 411, 416, 420, 425, 429, 434, 438, 443, 447, 452, 456, 461, 466, 470, 475, 480, 484, 489, 494, 498, 503, 508, 513, 518, 522, 527, 532, 537, 542, 547, 551, 556, 561, 566, 571, 576, 581, 586, 591, 596, 601, 606, 611, 616, 621, 627, 632, 637, 642, 647, 652, 657, 663, 668, 673, 678, 684, 689, 694, 699, 705, 710, 715, 721, 726, 731, 737, 742, 748, 753, 759, 764, 769, 775, 780, 786, 791, 797, 803, 808, 814, 819, 825, 830, 836, 842, 847, 853, 859, 864, 870, 876, 882, 887, 893, 899, 905, 910, 916, 922, 928, 934, 939, 945, 951, 957, 963, 969, 975, 981, 987, 993, 999, 1005, 1010, 1016, 1023};
 void led_blinking_task(void)
 {
 	static uint32_t start_ms = 0;
 	static bool led_state = false;
 
 	// Blink every interval ms
-	if (board_millis() - start_ms < blink_interval_ms)
+	if (board_millis() - start_ms < 10)
 		return; // not enough time
 	start_ms += 10;
 
-	leds_out0_write((leds_out0_read() + 3) & 0x3FF);
-	leds_out1_write((((leds_out1_read() >> 10) + 5) & 0x3FF) << 10);
-	leds_out2_write((board_millis() & 0x3FF) << 20UL);
+
+	int count = board_millis()/ 20;
+
+	volatile uint32_t *p = (uint32_t*)CSR_LEDS_OUT0_ADDR;
+
+	for(int i = 0; i < 7; i++){
+		p[i] = _gamma[values[(count + i*4) % 32]] << 20;
+		p[i] |= _gamma[values[(count + i*4) % 32] / 2] << 10;		
+	}
 	
 	//leds_out_write(led_state);
 	//board_led_write(led_state);
@@ -189,10 +216,7 @@ uint32_t tud_dfu_get_timeout_cb(uint8_t alt, uint8_t state)
 {
   if ( state == DFU_DNBUSY )
   {
-    // For this example
-    // - Atl0 Flash is fast : 1   ms
-    // - Alt1 EEPROM is slow: 100 ms
-    return (alt == 0) ? 1 : 100;
+    return 1; /* Request we are polled in 1ms */
   }
   else if (state == DFU_MANIFEST)
   {
@@ -211,12 +235,27 @@ void tud_dfu_download_cb(uint8_t alt, uint16_t block_num, uint8_t const* data, u
   (void) alt;
   (void) block_num;
 
-  //printf("\r\nReceived Alt %u BlockNum %u of length %u\r\n", alt, wBlockNum, length);
+  	uint32_t flash_address = alt_offsets[alt] + block_num * CFG_TUD_DFU_XFER_BUFSIZE;
 
-  for(uint16_t i=0; i<length; i++)
-  {
-    //printf("%c", data[i]);
-  }
+	if((flash_address & (FLASH_64K_BLOCK_ERASE_SIZE-1)) == 0){
+		//printf("Erasing. flash_address=%08x\n", flash_address);
+
+		/* First block in 64K erase block */
+		spiBeginErase64(flash_address);
+
+		/* While FLASH erase is in progress update LEDs */
+		while(spiIsBusy()){ led_blinking_task(); };
+	}
+  
+	//printf("tud_dfu_download_cb(), alt=%u, block=%u, flash_address=%08x\n", alt, block_num, flash_address);
+
+	for(int i = 0; i < CFG_TUD_DFU_XFER_BUFSIZE / 256; i++){
+		spiBeginWrite(flash_address, data + i*256, 256);
+		flash_address += 256;
+
+		/* While FLASH erase is in progress update LEDs */
+		while(spiIsBusy()){ led_blinking_task(); };
+	}
 
   // flashing op for download complete without error
   tud_dfu_finish_flashing(DFU_STATUS_OK);
@@ -243,10 +282,10 @@ uint16_t tud_dfu_upload_cb(uint8_t alt, uint16_t block_num, uint8_t* data, uint1
   (void) block_num;
   (void) length;
 
-  uint16_t const xfer_len = (uint16_t) strlen(upload_image[alt]);
-  memcpy(data, upload_image[alt], xfer_len);
+  //uint16_t const xfer_len = (uint16_t) strlen(upload_image[alt]);
+  //memcpy(data, upload_image[alt], xfer_len);
 
-  return xfer_len;
+  return 0;
 }
 
 // Invoked when the Host has terminated a download or upload transfer
@@ -260,4 +299,5 @@ void tud_dfu_abort_cb(uint8_t alt)
 void tud_dfu_detach_cb(void)
 {
   printf("Host detach, we should probably reboot\r\n");
+	complete_timeout = 100;
 }

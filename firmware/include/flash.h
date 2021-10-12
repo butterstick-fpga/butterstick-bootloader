@@ -34,4 +34,7 @@ void spiSwapTxRx(void);
 
 void spiFree(void);
 
+#define FLASH_64K_BLOCK_ERASE_SIZE (64*1024)
+#define FLASH_4K_BLOCK_ERASE_SIZE (4*1024)
+
 #endif /* BB_SPI_H_ */

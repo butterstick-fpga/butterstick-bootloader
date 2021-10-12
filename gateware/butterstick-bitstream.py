@@ -34,7 +34,7 @@ from litex.soc.interconnect.csr import *
 
 from litex.soc.cores.clock import *
 from litex.soc.cores.clock.common import period_ns
-from litex.soc.cores.led import LedChaser
+from litex.soc.cores.gpio import GPIOOut
 from litex.soc.cores.spi_flash import SpiFlashDualQuad
 
 from rtl.platform import butterstick_r1d0
@@ -159,46 +159,10 @@ class BaseSoC(SoCCore):
         platform.add_extension(butterstick_r1d0._uart_debug)
 
         # SoCCore ----------------------------------------------------------------------------------
-        SoCCore.__init__(self, platform, clk_freq=sys_clk_freq, csr_data_width=32, integrated_rom_size=32*1024, integrated_sram_size=16*1024, uart_baudrate=1000000)
-
-        #print(kwargs)
-
-        
+        SoCCore.__init__(self, platform, clk_freq=sys_clk_freq, csr_data_width=32, integrated_rom_size=32*1024, integrated_sram_size=16*1024, uart_baudrate=1000000)        
         
         # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = crg = CRG(platform, sys_clk_freq)
-
-        # # DDR3 SDRAM -------------------------------------------------------------------------------
-        # if not self.integrated_main_ram_size:
-        #     available_sdram_modules = {
-        #         "MT41K64M16":  MT41K64M16,
-        #         "MT41K128M16": MT41K128M16,
-        #         "MT41K256M16": MT41K256M16,
-        #         "MT41K512M16": MT41K512M16,
-        #     }
-        #     sdram_module = available_sdram_modules.get(kwargs.get('sdram_device'))
-
-        #     ddram_pads = platform.request("ddram")
-        #     self.submodules.ddrphy = ECP5DDRPHY(
-        #         pads         = ddram_pads,
-        #         sys_clk_freq = sys_clk_freq)
-        #     self.ddrphy.settings.rtt_nom = "disabled"
-        #     self.add_csr("ddrphy")
-        #     if hasattr(ddram_pads, "vccio"):
-        #         self.comb += ddram_pads.vccio.eq(0b111111)
-        #     if hasattr(ddram_pads, "gnd"):
-        #         self.comb += ddram_pads.gnd.eq(0)
-        #     self.comb += self.crg.stop.eq(self.ddrphy.init.stop)
-        #     self.comb += self.crg.reset.eq(self.ddrphy.init.reset)
-        #     self.add_sdram("sdram",
-        #         phy                     = self.ddrphy,
-        #         module                  = sdram_module(sys_clk_freq, "1:2"),
-        #         origin                  = self.mem_map["main_ram"],
-        #         size                    = kwargs.get("max_sdram_size", 0x40000000),
-        #         l2_cache_size           = kwargs.get("l2_size", 8192),
-        #         l2_cache_min_data_width = kwargs.get("min_l2_data_width", 128),
-        #         l2_cache_reverse        = True
-        #     )
 
         # ButterStick r1.0 requires 
         # VccIO set on port 2 before ULPI signals work.
@@ -231,6 +195,10 @@ class BaseSoC(SoCCore):
         led = platform.request("led_rgb_multiplex")
         self.submodules.leds = Leds(led.a, led.c)
         self.add_csr("leds")
+
+        rst = Signal()
+        self.submodules.reset = GPIOOut(rst)
+        self.comb += platform.request("rst_n").eq(~rst)
 
         self.submodules.usb = LunaEpTriWrapper(self.platform, base_addr=0xe000_0000)
         self.add_memory_region("usb", 0xe000_0000, 0x1_0000, type="");
@@ -348,7 +316,7 @@ def main():
     # create compressed config (ECP5 specific)
     output_bitstream = os.path.join(builder.gateware_dir, f"{soc.platform.name}.bit")
     #os.system(f"ecppack --freq 38.8 --spimode qspi --compress --input {output_config} --bit {output_bitstream}")
-    os.system(f"ecppack --freq 38.8 --compress --input {output_config} --bit {output_bitstream}")
+    os.system(f"ecppack --freq 38.8 --bootaddr 0x400000 --compress --input {output_config} --bit {output_bitstream}")
 
     dfu_file = os.path.join(builder.gateware_dir, f"{soc.platform.name}.dfu")
     shutil.copyfile(output_bitstream, dfu_file)

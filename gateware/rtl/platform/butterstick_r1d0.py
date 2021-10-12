@@ -7,7 +7,7 @@ from litex.build.lattice import LatticePlatform
 _butterstick_r1d0_io = [
     
     ("clk30", 0,   Pins("B12"), IOStandard("LVCMOS18")),
-    ("rst_n", 0,   Pins("R3"), IOStandard("LVCMOS33")),
+    ("rst_n", 0,   Pins("R3"), IOStandard("LVCMOS33"), Misc("MODE=OPENDRAIN")),
 
     ("user_btn", 0, Pins("U16"), IOStandard("SSTL135_I")),
     ("user_btn", 1, Pins("T17"), IOStandard("SSTL135_I")),

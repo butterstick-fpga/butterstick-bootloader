@@ -214,6 +214,46 @@ int spiInit(void) {
 	return 0;
 }
 
+void spiSetQE(void){
+	// Check for supported FLASH ID
+	// Set QE bit on AT25SF081 if not set
+    spiInit();
+
+	// READ status register
+	uint8_t status1 = spi_read_status();
+
+	spiBegin();
+	spi_single_tx(0x35);
+	uint8_t status2 = spi_single_rx();
+	spiEnd();
+
+	printf("status2=%02x\n", status2);
+	
+	// Check Quad Enable bit
+	if((status2 & 0x02) == 0){
+		// Enable Write-Enable Latch (WEL)
+		spiBegin();
+		spi_single_tx(0x06);
+		spiEnd();
+
+		// Write back status1 and status2 with QE bit set
+		status2 |= 0x02;
+
+
+		printf("status2=%02x\n", status2);
+
+		spiBegin();
+		spi_single_tx(0x31);
+		spi_single_tx(status2);
+		spiEnd();
+		
+		// loop while write in progress set
+		while(spi_read_status() & 1) {}
+	}
+    
+}
+
+
 void spiHold(void) {
 	spiBegin();
 	spi_single_tx(0xb9);

@@ -113,8 +113,9 @@ char const* string_desc_arr [] =
   (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
   "Good Stuff Department",       // 1: Manufacturer
   "butterstick-fpga (dfu)",      // 2: Product
-  "",                            // 3: Serials, derived from FLASH UUID
-  "butterstick-dfu-bootlader",   // 4: DFU
+  "",                            // 3: Serial, derived from FLASH UUID
+  "main-gateware @0x100000",     // 4: DFU alt0 name
+  "main-firmware @0x400000",     // 5: DFU alt1 name
 };
 
 static uint16_t _desc_str[32];
