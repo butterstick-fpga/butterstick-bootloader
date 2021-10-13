@@ -87,18 +87,14 @@ void spiflash_page_program(uint32_t addr, uint8_t *data, int len)
 
 	for(int i = 0; i < len; i++){
 	
-		while(!spiflash_core_master_status_tx_ready_read())
-		;
+		while(!spiflash_core_master_status_tx_ready_read()){}
+		spiflash_core_master_rxtx_write((uint32_t)data[i]);		
 
-		spiflash_core_master_rxtx_write((uint32_t)data[i]);
-
-		while(!spiflash_core_master_status_tx_ready_read())
-		;
-
+		while(!spiflash_core_master_status_rx_ready_read()){}
 		spiflash_core_master_rxtx_read();
-		
-		
 	}
+
+
 
 	spiflash_core_master_cs_write(0);
 }
