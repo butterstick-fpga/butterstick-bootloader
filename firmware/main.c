@@ -137,6 +137,12 @@ int main(int i, char **c)
 		}
 	}
 
+
+	/* Reboot to our user bitstream */
+	irq_setie(0);
+	usb_device_controller_connect_write(0);
+	msleep(200);	
+
 	while(1){
 		reset_out_write(1);
 	}
@@ -302,6 +308,5 @@ void tud_dfu_abort_cb(uint8_t alt)
 // Invoked when a DFU_DETACH request is received
 void tud_dfu_detach_cb(void)
 {
-  printf("Host detach, we should probably reboot\r\n");
-	complete_timeout = 500;
+	complete_timeout = 10;
 }
