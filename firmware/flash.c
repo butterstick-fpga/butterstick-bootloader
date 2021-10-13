@@ -75,12 +75,29 @@ void spiflash_page_program(uint32_t addr, uint8_t *data, int len)
 	spiflash_core_master_phyconfig_mask_write(1);
 	spiflash_core_master_cs_write(1);
 
-	transfer_byte(0x02);
+	transfer_byte(0x32);
 	transfer_byte(addr >> 16);
 	transfer_byte(addr >> 8);
 	transfer_byte(addr >> 0);
+
+
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(4);
+	spiflash_core_master_phyconfig_mask_write(0x0F);
+
 	for(int i = 0; i < len; i++){
-		transfer_byte(data[i]);
+	
+		while(!spiflash_core_master_status_tx_ready_read())
+		;
+
+		spiflash_core_master_rxtx_write((uint32_t)data[i]);
+
+		while(!spiflash_core_master_status_tx_ready_read())
+		;
+
+		spiflash_core_master_rxtx_read();
+		
+		
 	}
 
 	spiflash_core_master_cs_write(0);

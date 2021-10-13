@@ -303,5 +303,5 @@ void tud_dfu_abort_cb(uint8_t alt)
 void tud_dfu_detach_cb(void)
 {
   printf("Host detach, we should probably reboot\r\n");
-	complete_timeout = 20;
+	complete_timeout = 500;
 }
