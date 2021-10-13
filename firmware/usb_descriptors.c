@@ -118,6 +118,61 @@ char const* string_desc_arr [] =
   "main-firmware @0x400000",     // 5: DFU alt1 name
 };
 
+// Microsoft Compatible ID Feature Descriptor
+#define MSFT_VENDOR_CODE    '~'     // Arbitrary, but should be printable ASCII
+#define MSFT_WCID_LEN       40
+
+// Microsoft OS String Descriptor. See: https://github.com/pbatard/libwdi/wiki/WCID-Devices
+static const uint16_t usb_string_microsoft = {0x0318, 'M','S','F','T','1','0','0', MSFT_VENDOR_CODE};
+ 
+// Microsoft WCID
+const uint8_t usb_microsoft_wcid[MSFT_WCID_LEN] = {
+    MSFT_WCID_LEN, 0, 0, 0,         // Length
+    0x00, 0x01,                     // Version
+    0x04, 0x00,                     // Compatibility ID descriptor index
+    0x01,                           // Number of sections
+    0, 0, 0, 0, 0, 0, 0,            // Reserved (7 bytes)
+
+    0,                              // Interface number
+    0x01,                           // Reserved
+    'W','I','N','U','S','B',0,0,    // Compatible ID
+    0,0,0,0,0,0,0,0,                // Sub-compatible ID (unused)
+    0,0,0,0,0,0,                    // Reserved
+};
+
+
+//--------------------------------------------------------------------+
+// WCID use vendor class
+//--------------------------------------------------------------------+
+bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request)
+{
+  // nothing to with DATA & ACK stage
+  if (stage != CONTROL_STAGE_SETUP) return true;
+
+  switch (request->bmRequestType_bit.type)
+  {
+    case TUSB_REQ_TYPE_VENDOR:
+      switch (request->bRequest)
+      {
+        case MSFT_VENDOR_CODE:
+          if ( request->wIndex == 0x0004 )
+          {
+            // Return a Microsoft Compatible ID Feature Descriptor
+            return tud_control_xfer(rhport, request, (void*) usb_microsoft_wcid, MSFT_WCID_LEN);
+          }
+          break;
+        default: break;
+      }
+    break;
+
+
+    default: break;
+  }
+
+  // stall unknown request
+  return false;
+}
+
 static uint16_t _desc_str[32];
 
 char hex(uint8_t d){
@@ -163,6 +218,9 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
   {
     // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
     // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
+    if(index == 0xEE){
+      return usb_string_microsoft;
+    }
 
     if ( !(index < sizeof(string_desc_arr)/sizeof(string_desc_arr[0])) ) return NULL;
 
