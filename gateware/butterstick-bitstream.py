@@ -171,11 +171,10 @@ class BaseSoC(SoCCore):
             )
         ]
 
-        # SPI FLASH --------------------------------------------------------------------------------
-        spi_pads = platform.request("spiflash4x")
-        self.submodules.lxspi = SpiFlashDualQuad(spi_pads, dummy=6, endianness="little")
-        self.lxspi.add_clk_primitive(platform.device)
-        self.register_mem("spiflash", self.mem_map["spiflash"], self.lxspi.bus, size=(1024*1024*16))
+        # SPI Flash --------------------------------------------------------------------------------
+        from litespi.modules import W25Q128JV
+        from litespi.opcodes import SpiNorFlashOpCodes as Codes
+        self.add_spi_flash(mode="4x", module=W25Q128JV(Codes.READ_1_1_4), with_master=True)
 
 
         # Leds -------------------------------------------------------------------------------------

@@ -12,261 +12,152 @@
 
 #include "flash.h"
 
-enum pin {
-	PIN_MOSI = 0,
-	PIN_CLK = 1,
-	PIN_CS = 2,
-	PIN_MISO_EN = 3,
-	PIN_MISO = 4, // Value is ignored
-};
 
-void spiBegin(void) {
-	lxspi_bitbang_write((0 << PIN_CLK) | (0 << PIN_CS));
+
+/* Originally from: https://github.com/norbertthiel
+ * src: https://github.com/litex-hub/litespi/issues/52#issuecomment-890787356
+ */
+
+static uint32_t transfer_byte(uint8_t b)
+{
+	// wait for tx ready
+	while(!spiflash_core_master_status_tx_ready_read())
+	;
+
+	spiflash_core_master_rxtx_write((uint32_t)b);
+
+	//wait for rx ready
+	while(!spiflash_core_master_status_rx_ready_read())
+	;
+
+	return spiflash_core_master_rxtx_read();
 }
 
-void spiEnd(void) {
-	lxspi_bitbang_write((0 << PIN_CLK) | (1 << PIN_CS));
+static void transfer_cmd(uint8_t *bs, uint8_t *resp, int len)
+{
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(1);
+	spiflash_core_master_phyconfig_mask_write(1);
+	spiflash_core_master_cs_write(1);
+
+	if(resp != 0){
+		if(bs != 0){
+			for(int i=0; i < len; i++)
+				resp[i] = transfer_byte(bs[i]);
+		}else{
+			for(int i=0; i < len; i++)
+				resp[i] = transfer_byte(0xFF);
+		}
+	}else{
+		for(int i=0; i < len; i++)
+			transfer_byte(bs[i]);
+	}
+
+	spiflash_core_master_cs_write(0);
 }
 
-static void spi_single_tx(uint8_t out) {
-	int bit;
+uint32_t spiflash_read_status_register(void)
+{
+	uint8_t buf[2];
+    transfer_cmd((uint8_t[]){0x05, 0}, buf, 2);
+	return buf[1];
+}
 
-	for (bit = 7; bit >= 0; bit--) {
-		if (out & (1 << bit)) {
-			lxspi_bitbang_write((0 << PIN_CLK) | (1 << PIN_MOSI));
-			lxspi_bitbang_write((1 << PIN_CLK) | (1 << PIN_MOSI));
-			lxspi_bitbang_write((0 << PIN_CLK) | (1 << PIN_MOSI));
-		} else {
-			lxspi_bitbang_write((0 << PIN_CLK) | (0 << PIN_MOSI));
-			lxspi_bitbang_write((1 << PIN_CLK) | (0 << PIN_MOSI));
-			lxspi_bitbang_write((0 << PIN_CLK) | (0 << PIN_MOSI));
+void spiflash_write_enable(void)
+{
+    transfer_cmd((uint8_t[]){0x06}, 0, 1);
+}
+
+void spiflash_page_program(uint32_t addr, uint8_t *data, int len)
+{
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(1);
+	spiflash_core_master_phyconfig_mask_write(1);
+	spiflash_core_master_cs_write(1);
+
+	transfer_byte(0x02);
+	transfer_byte(addr >> 16);
+	transfer_byte(addr >> 8);
+	transfer_byte(addr >> 0);
+	for(int i = 0; i < len; i++){
+		transfer_byte(data[i]);
+	}
+
+	spiflash_core_master_cs_write(0);
+}
+
+void spiflash_sector_erase(uint32_t addr)
+{
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(1);
+	spiflash_core_master_phyconfig_mask_write(1);
+	spiflash_core_master_cs_write(1);
+
+	transfer_byte(0xd8);
+	transfer_byte(addr >> 16);
+	transfer_byte(addr >> 8);
+	transfer_byte(addr >> 0);
+
+	spiflash_core_master_cs_write(0);
+}
+
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+
+int spiflash_write_stream(uint32_t addr, uint8_t *stream, int len)
+{
+	int res = 0;
+        if( ((uint32_t)addr & ((64*1024) - 1)) == 0)
+	{
+		int w_len = min(len, SPIFLASH_MODULE_PAGE_SIZE);
+		int offset = 0;
+		while(w_len)
+		{
+			if(((uint32_t)addr+offset) & ((64*1024) - 1) == 0)
+			{
+				spiflash_write_enable();
+				spiflash_sector_erase(addr+offset);
+
+				while (spiflash_read_status_register() & 1){}
+			}
+
+			spiflash_write_enable();
+			page_program(addr+offset, stream+offset, w_len);
+
+			while(spiflash_read_status_register() & 1){}
+
+			offset += w_len;
+			w_len = min(len-offset,SPIFLASH_MODULE_PAGE_SIZE);
+			res = offset;
 		}
 	}
-}
-
-static uint8_t spi_single_rx(void) {
-	int bit = 0;
-	uint8_t in = 0;
-
-	lxspi_bitbang_write((1 << PIN_MISO_EN) | (0 << PIN_CLK));
-
-	while (bit++ < 8) {
-		lxspi_bitbang_write((1 << PIN_MISO_EN) | (1 << PIN_CLK));
-		in = (in << 1) | lxspi_miso_read();
-		lxspi_bitbang_write((1 << PIN_MISO_EN) | (0 << PIN_CLK));
-	}
-
-	return in;
-}
-
-static uint8_t spi_read_status(void) {
-	uint8_t val;
-
-	spiBegin();
-	spi_single_tx(0x05);
-	val = spi_single_rx();
-	spiEnd();
-	return val;
-}
-
-int spiIsBusy(void) {
-  	return spi_read_status() & (1 << 0);
-}
-
-void spi_read_uuid(uint8_t* uuid) {
-    /* 25Q128JV FLASH, Read Unique ID Number (4Bh) 
-        The Read Unique ID Number instruction accesses a factory-set read-only 64-bit number that is unique to
-        each W25Q128JV device. The ID number can be used in conjunction with user software methods to help
-        prevent copying or cloning of a system. The Read Unique ID instruction is initiated by driving the /CS pin
-        low and shifting the instruction code “4Bh” followed by a four bytes of dummy clocks. After which, the 64-
-        bit ID is shifted out on the falling edge of CLK
-    */
-
-    spiBegin();
-    spi_single_tx(0x4B);
-    for(int dummy = 0; dummy < 4; dummy++)
-        spi_single_rx();
-    for(int i = 0; i < 8; i++)
-        *uuid++ = spi_single_rx();
-    spiEnd();
-}
-
-__attribute__((used))
-uint32_t spiId(uint8_t* data) {
-	uint8_t* ptr = data;
-
-	spiBegin();
-	spi_single_tx(0x90);               // Read manufacturer ID
-	spi_single_tx(0x00);               // Dummy byte 1
-	spi_single_tx(0x00);               // Dummy byte 2
-	spi_single_tx(0x00);               // Dummy byte 3
-	*ptr++ = spi_single_rx();  // Manufacturer ID
-	*ptr++ = spi_single_rx();  // Device ID
-	spiEnd();
-
-	spiBegin();
-	spi_single_tx(0x9f);               // Read device id
-	*ptr++ = spi_single_rx();             // Manufacturer ID (again)
-	*ptr++ = spi_single_rx();  // Memory Type
-	*ptr++ = spi_single_rx();  // Memory Size
-	spiEnd();
-
-	return ptr - data;
-}
-
-int spiBeginErase4(uint32_t erase_addr) {
-	// Enable Write-Enable Latch (WEL)
-	spiBegin();
-	spi_single_tx(0x06);
-	spiEnd();
-
-	spiBegin();
-	spi_single_tx(0x20);
-	spi_single_tx(erase_addr >> 16);
-	spi_single_tx(erase_addr >> 8);
-	spi_single_tx(erase_addr >> 0);
-	spiEnd();
-	return 0;
-}
-
-int spiBeginErase32(uint32_t erase_addr) {
-	// Enable Write-Enable Latch (WEL)
-	spiBegin();
-	spi_single_tx(0x06);
-	spiEnd();
-
-	spiBegin();
-	spi_single_tx(0x52);
-	spi_single_tx(erase_addr >> 16);
-	spi_single_tx(erase_addr >> 8);
-	spi_single_tx(erase_addr >> 0);
-	spiEnd();
-	return 0;
-}
-
-int spiBeginErase64(uint32_t erase_addr) {
-	// Enable Write-Enable Latch (WEL)
-	spiBegin();
-	spi_single_tx(0x06);
-	spiEnd();
-
-	spiBegin();
-	spi_single_tx(0xD8);
-	spi_single_tx(erase_addr >> 16);
-	spi_single_tx(erase_addr >> 8);
-	spi_single_tx(erase_addr >> 0);
-	spiEnd();
-	return 0;
-}
-
-int spiBeginWrite(uint32_t addr, const void *v_data, unsigned int count) {
-	const uint8_t write_cmd = 0x02;
-	const uint8_t *data = v_data;
-	unsigned int i;
-
-	// Enable Write-Enable Latch (WEL)
-	spiBegin();
-	spi_single_tx(0x06);
-	spiEnd();
-
-	spiBegin();
-	spi_single_tx(write_cmd);
-	spi_single_tx(addr >> 16);
-	spi_single_tx(addr >> 8);
-	spi_single_tx(addr >> 0);
-	for (i = 0; (i < count) && (i < 256); i++)
-		spi_single_tx(*data++);
-	spiEnd();
-
-	return 0;
-}
-
-uint8_t spiReset(void) {
-	// Writing 0xff eight times is equivalent to exiting QPI mode,
-	// or if CFM mode is enabled it will terminate CFM and return
-	// to idle.
-	unsigned int i;
-	spiBegin();
-	for (i = 0; i < 8; i++)
-		spi_single_tx(0xff);
-	spiEnd();
-
-	// Some SPI parts require this to wake up
-	spiBegin();
-	spi_single_tx(0xab);    // Read electronic signature
-	spiEnd();
-
-	return 0;
-}
-
-int spiInit(void) {
-
-	// Ensure CS is deasserted and the clock is high
-	lxspi_bitbang_write((0 << PIN_CLK) | (1 << PIN_CS));
-
-	// Disable memory-mapped mode and enable bit-bang mode
-	lxspi_bitbang_en_write(1);
-
-	// Reset the SPI flash, which will return it to SPI mode even
-	// if it's in QPI mode, and ensure the chip is accepting commands.
-	spiReset();
-
-	return 0;
-}
-
-void spiSetQE(void){
-	// Check for supported FLASH ID
-	// Set QE bit on AT25SF081 if not set
-    spiInit();
-
-	// READ status register
-	uint8_t status1 = spi_read_status();
-
-	spiBegin();
-	spi_single_tx(0x35);
-	uint8_t status2 = spi_single_rx();
-	spiEnd();
-
-	printf("status2=%02x\n", status2);
-	
-	// Check Quad Enable bit
-	if((status2 & 0x02) == 0){
-		// Enable Write-Enable Latch (WEL)
-		spiBegin();
-		spi_single_tx(0x06);
-		spiEnd();
-
-		// Write back status1 and status2 with QE bit set
-		status2 |= 0x02;
-
-
-		printf("status2=%02x\n", status2);
-
-		spiBegin();
-		spi_single_tx(0x31);
-		spi_single_tx(status2);
-		spiEnd();
-		
-		// loop while write in progress set
-		while(spi_read_status() & 1) {}
-	}
-    
+	return res;
 }
 
 
-void spiHold(void) {
-	spiBegin();
-	spi_single_tx(0xb9);
-	spiEnd();
 
-}
-void spiUnhold(void) {
-	spiBegin();
-	spi_single_tx(0xab);
-	spiEnd();
+/* 25Q128JV FLASH, Read Unique ID Number (4Bh) 
+	The Read Unique ID Number instruction accesses a factory-set read-only 64-bit number that is unique to
+	each W25Q128JV device. The ID number can be used in conjunction with user software methods to help
+	prevent copying or cloning of a system. The Read Unique ID instruction is initiated by driving the /CS pin
+	low and shifting the instruction code “4Bh” followed by a four bytes of dummy clocks. After which, the 64-
+	bit ID is shifted out on the falling edge of CLK
+*/
+void spiflash_read_uuid(uint8_t* uuid) {
+
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(1);
+	spiflash_core_master_phyconfig_mask_write(1);
+	spiflash_core_master_cs_write(1);
+
+	transfer_byte(0x4B);
+	transfer_byte(0xFF);
+	transfer_byte(0xFF);
+	transfer_byte(0xFF);
+	transfer_byte(0xFF);
+
+	for(int i=0; i < 8; i++)
+		uuid[i] = transfer_byte(0xFF);
+
+	spiflash_core_master_cs_write(0);
 }
 
-void spiFree(void) {
-	// Re-enable memory-mapped mode
-	lxspi_bitbang_en_write(0);
-}

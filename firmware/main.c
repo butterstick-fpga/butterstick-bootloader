@@ -10,6 +10,7 @@
 #include <generated/csr.h>
 #include <generated/mem.h>
 #include <generated/git.h>
+#include <generated/luna_usb.h>
 
 #include <irq.h>
 #include <uart.h>
@@ -110,9 +111,7 @@ int main(int i, char **c)
 	irq_setie(1);
 	uart_init();
 
-	//leds_out_write(0);
-
-	msleep(25);
+	msleep(250);
 
 	timer_init();
 	tusb_init();
@@ -241,20 +240,25 @@ void tud_dfu_download_cb(uint8_t alt, uint16_t block_num, uint8_t const* data, u
 		//printf("Erasing. flash_address=%08x\n", flash_address);
 
 		/* First block in 64K erase block */
-		spiBeginErase64(flash_address);
+		spiflash_write_enable();
+		spiflash_sector_erase(flash_address);
 
 		/* While FLASH erase is in progress update LEDs */
-		while(spiIsBusy()){ led_blinking_task(); };
+		while(spiflash_read_status_register() & 1){ led_blinking_task(); };
 	}
   
 	//printf("tud_dfu_download_cb(), alt=%u, block=%u, flash_address=%08x\n", alt, block_num, flash_address);
 
 	for(int i = 0; i < CFG_TUD_DFU_XFER_BUFSIZE / 256; i++){
-		spiBeginWrite(flash_address, data + i*256, 256);
+
+		spiflash_write_enable();
+		spiflash_page_program(flash_address, data, 256);
 		flash_address += 256;
+		data += 256;
+
 
 		/* While FLASH erase is in progress update LEDs */
-		while(spiIsBusy()){ led_blinking_task(); };
+		while(spiflash_read_status_register() & 1){ led_blinking_task(); };
 	}
 
   // flashing op for download complete without error
@@ -299,5 +303,5 @@ void tud_dfu_abort_cb(uint8_t alt)
 void tud_dfu_detach_cb(void)
 {
   printf("Host detach, we should probably reboot\r\n");
-	complete_timeout = 100;
+	complete_timeout = 20;
 }

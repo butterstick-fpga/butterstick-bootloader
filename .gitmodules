@@ -38,3 +38,6 @@
 [submodule "gateware/deps/pythondata-software-compiler_rt"]
 	path = gateware/deps/pythondata-software-compiler_rt
 	url = https://github.com/litex-hub/pythondata-software-compiler_rt.git
+[submodule "gateware/deps/litespi"]
+	path = gateware/deps/litespi
+	url = https://github.com/litex-hub/litespi.git
