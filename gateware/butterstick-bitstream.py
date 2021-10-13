@@ -121,24 +121,13 @@ class CRG(Module):
 # BaseSoC ------------------------------------------------------------------------------------------
 
 class BaseSoC(SoCCore):
-    csr_map = {
-        "ctrl":           0,  # provided by default (optional)
-        "crg":            1,  # user
-        "identifier_mem": 4,  # provided by default (optional)
-        "timer0":         5,  # provided by default (optional)
-       
-        "gpio_led":       10,
-        "gpio":           11,
-    }
-    csr_map.update(SoCCore.csr_map)
-
     mem_map = {
         "rom":      0x00000000,  # (default shadow @0x80000000)
         "sram":     0x10000000,  # (default shadow @0xa0000000)
         "spiflash": 0x20000000,  # (default shadow @0xa0000000)
         "main_ram": 0x40000000,  # (default shadow @0xc0000000)
         "csr":      0xf0000000,  # (default shadow @0xe0000000)
-        "usb":      0xe0001000,
+        "usb":      0xf0010000,
     }
     mem_map.update(SoCCore.mem_map)
 
@@ -203,9 +192,9 @@ class BaseSoC(SoCCore):
         self.submodules.button = GPIOIn(platform.request("user_btn"))
 
         # USB --------------------------------------------------------------------------------------
-        self.submodules.usb = LunaEpTriWrapper(self.platform, base_addr=0xe000_0000)
-        self.add_memory_region("usb", 0xe000_0000, 0x1_0000, type="");
-        self.add_wb_slave(0xe000_0000, self.usb.bus)
+        self.submodules.usb = LunaEpTriWrapper(self.platform, base_addr=self.mem_map['usb'])
+        self.add_memory_region("usb", self.mem_map['usb'], 0x10000, type="");
+        self.add_wb_slave(self.mem_map['usb'], self.usb.bus)
         for name, irq in self.usb.irqs.items():
             name = 'usb_{}'.format(name)
             class DummyIRQ(Module):
