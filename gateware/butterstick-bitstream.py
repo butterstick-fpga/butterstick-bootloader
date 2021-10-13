@@ -34,7 +34,7 @@ from litex.soc.interconnect.csr import *
 
 from litex.soc.cores.clock import *
 from litex.soc.cores.clock.common import period_ns
-from litex.soc.cores.gpio import GPIOOut
+from litex.soc.cores.gpio import GPIOOut, GPIOIn
 from litex.soc.cores.spi_flash import SpiFlashDualQuad
 
 from rtl.platform import butterstick_r1d0
@@ -164,17 +164,15 @@ class BaseSoC(SoCCore):
         # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = crg = CRG(platform, sys_clk_freq)
 
-        # ButterStick r1.0 requires 
-        # VccIO set on port 2 before ULPI signals work.
+        # VCCIO Control ----------------------------------------------------------------------------
         vccio_pins = platform.request("vccio_ctrl")
         pwm_timer = Signal(14)
         self.sync += pwm_timer.eq(pwm_timer + 1)
         self.comb += [
             vccio_pins.pdm[0].eq(pwm_timer < int(2**14 * (0.13))),  # 3.3v
             vccio_pins.pdm[1].eq(pwm_timer < int(2**14 * (0.13))),  # 3.3v
-            vccio_pins.pdm[2].eq(pwm_timer < int(2**14 * (0.70))), # 1.8v
+            vccio_pins.pdm[2].eq(pwm_timer < int(2**14 * (0.70))),  # 1.8v
         ]
-
         counter = Signal(32)
         self.sync += [
             If(counter[16] == 0,
@@ -196,10 +194,15 @@ class BaseSoC(SoCCore):
         self.submodules.leds = Leds(led.a, led.c)
         self.add_csr("leds")
 
+        # Self Reset -------------------------------------------------------------------------------
         rst = Signal()
         self.submodules.reset = GPIOOut(rst)
         self.comb += platform.request("rst_n").eq(~rst)
 
+        # Buttons ----------------------------------------------------------------------------------
+        self.submodules.button = GPIOIn(platform.request("user_btn"))
+
+        # USB --------------------------------------------------------------------------------------
         self.submodules.usb = LunaEpTriWrapper(self.platform, base_addr=0xe000_0000)
         self.add_memory_region("usb", 0xe000_0000, 0x1_0000, type="");
         self.add_wb_slave(0xe000_0000, self.usb.bus)
