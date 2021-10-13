@@ -61,7 +61,7 @@ vpath %.a $(PACKAGES:%=../%)
 		$(PACKAGES:%=-L../%) \
 		-Wl,--whole-archive \
 		-Wl,--gc-sections \
-		$(LIBS:lib%=-l%) \
+		$(LIBS:lib%=-l%)
 		
 ifneq ($(OS),Windows_NT)
 	chmod -x $@
