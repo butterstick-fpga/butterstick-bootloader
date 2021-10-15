@@ -73,7 +73,7 @@ uint8_t const * tud_descriptor_device_cb(void)
 //--------------------------------------------------------------------+
 
 // Number of Alternate Interface (each for 1 flash partition)
-#define ALT_COUNT   2
+#define ALT_COUNT   3
 
 enum
 {
@@ -114,8 +114,9 @@ char const* string_desc_arr [] =
   "Good Stuff Department",       // 1: Manufacturer
   "butterstick-fpga (dfu)",      // 2: Product
   "",                            // 3: Serial, derived from FLASH UUID
-  "main-gateware @0x100000",     // 4: DFU alt0 name
-  "main-firmware @0x400000",     // 5: DFU alt1 name
+  "flash @0x200000 (gateware)",  // 4: DFU alt0 name
+  "flash @0x400000 (firmware)",  // 5: DFU alt1 name
+  "flash @0x800000 (extra)",     // 6: DFU alt2 name
 };
 
 // Microsoft Compatible ID Feature Descriptor

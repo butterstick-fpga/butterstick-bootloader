@@ -12,8 +12,6 @@
 
 #include "flash.h"
 
-
-
 /* Originally from: https://github.com/norbertthiel
  * src: https://github.com/litex-hub/litespi/issues/52#issuecomment-890787356
  */
@@ -80,7 +78,6 @@ void spiflash_page_program(uint32_t addr, uint8_t *data, int len)
 	transfer_byte(addr >> 8);
 	transfer_byte(addr >> 0);
 
-
 	spiflash_core_master_phyconfig_len_write(8);
 	spiflash_core_master_phyconfig_width_write(4);
 	spiflash_core_master_phyconfig_mask_write(0x0F);
@@ -93,8 +90,6 @@ void spiflash_page_program(uint32_t addr, uint8_t *data, int len)
 		while(!spiflash_core_master_status_rx_ready_read()){}
 		spiflash_core_master_rxtx_read();
 	}
-
-
 
 	spiflash_core_master_cs_write(0);
 }
