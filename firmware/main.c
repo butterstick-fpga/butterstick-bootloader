@@ -173,13 +173,24 @@ void led_blinking_task(void)
 	switch(blink_interval_ms){
 		case BLINK_DFU_IDLE:
 		{
-			int colour = (((count + 8) >> 5) % 3) * 10;
-			
+			/* Pick colour from idle_rainbow. Then interger multiply it with a sine_falloff_fade */
+			int colour = ((count + 5) / 32) % 32;
 			for(int i = 0; i < 4; i++){
-				p[i] = (uint32_t)sine_falloff_fade[(count + i*2) % 32] << colour; /* BLUE */
+				int c = (count + i*2);
+				int r = (((idle_rainbow[colour] >> 20) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+				int g = (((idle_rainbow[colour] >> 10) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+				int b = (((idle_rainbow[colour] >> 0 ) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+				p[i] = (r << 20) | (g << 10) | (b);
 			}
 			for(int i = 0; i < 3; i++){
-				p[4 + i] = (uint32_t)sine_falloff_fade[(count - (i - 2)*2) % 32] << colour; /* BLUE */
+				int c = (count - (i - 2)*2);
+
+				int r = (((idle_rainbow[colour] >> 20) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+				int g = (((idle_rainbow[colour] >> 10) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+				int b = (((idle_rainbow[colour] >> 0 ) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+				p[4+i] = (r << 20) | (g << 10) | (b);
+
+				//p[4 + i] = (uint32_t)sine_falloff_fade[c % 32] << colour; /* BLUE */
 			}
 		}
 		break;
