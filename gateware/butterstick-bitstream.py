@@ -296,6 +296,9 @@ def main():
         vns = builder.build(**builder_kargs)
         soc.do_exit(vns)   
     
+    from litex.soc.doc import generate_docs
+    generate_docs(soc, "build/docs/")
+    os.system("sphinx-build -M html build/docs/ build/docs/_build")
 
     input_config = os.path.join(builder.output_dir, "gateware", f"{soc.platform.name}.config")
     output_config = os.path.join(builder.output_dir, "gateware", f"{soc.platform.name}_patched.config")
@@ -307,7 +310,7 @@ def main():
     # create compressed config (ECP5 specific)
     output_bitstream = os.path.join(builder.gateware_dir, f"{soc.platform.name}.bit")
     #os.system(f"ecppack --freq 38.8 --spimode qspi --compress --input {output_config} --bit {output_bitstream}")
-    os.system(f"ecppack --freq 38.8 --bootaddr 0x400000 --compress --input {output_config} --bit {output_bitstream}")
+    os.system(f"ecppack --freq 38.8 --bootaddr 0x200000 --compress --input {output_config} --bit {output_bitstream}")
 
     dfu_file = os.path.join(builder.gateware_dir, f"{soc.platform.name}.dfu")
     shutil.copyfile(output_bitstream, dfu_file)
