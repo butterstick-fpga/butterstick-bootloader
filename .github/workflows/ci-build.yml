@@ -39,12 +39,14 @@ jobs:
     #   run: |
     #     git apply ../migen-asyncmem.patch
 
+    - name: Patch
+      working-directory: ./gateware/deps
+      run: git apply --verbose --directory=gateware/deps/luna 001-luna-connect.patch
+
     - name: Litex build
       working-directory: ./gateware
       run: |
         python3 butterstick-bitstream.py
-      env:
-        LUNA_PLATFORM: "luna.gateware.platform.luna_r0_4:LUNAPlatformRev0D4"
 
 #    - name: Upload build
 #      uses: actions/upload-artifact@v2

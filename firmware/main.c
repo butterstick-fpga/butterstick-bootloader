@@ -28,6 +28,7 @@ const uint32_t alt_offsets[] = {
 	0x200000,
 	0x400000,
 	0x800000,
+	0x000000,
 };
 
 static int complete_timeout;
@@ -114,6 +115,13 @@ int main(int i, char **c)
 
 	msleep(100);
 
+	if(ctrl_scratch_read() == 0){
+		enable_bootloader_alt();
+	}
+
+	uint8_t last_button = button_in_read();
+	uint32_t button_count = board_millis();
+
 	if((button_in_read() & 1) == 0){
 
 		timer_init();
@@ -123,6 +131,24 @@ int main(int i, char **c)
 		{
 			tud_task(); // tinyusb device task
 			led_blinking_task();
+
+			if((button_in_read() == 0)){
+				
+				if((board_millis() - button_count) > 5000){
+					
+					ctrl_scratch_write(0);
+
+					irq_setie(0);
+					usb_device_controller_connect_write(0);	
+					msleep(20);	
+					
+					ctrl_reset_write(1);
+
+				}
+			}
+			else{
+				button_count = board_millis();
+			}
 
 			if(complete_timeout){
 				static uint32_t start_ms = 0;
