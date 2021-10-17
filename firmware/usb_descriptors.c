@@ -175,7 +175,7 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
   return false;
 }
 
-static uint16_t _desc_str[32];
+static uint16_t _desc_str[40];
 
 char hex(uint8_t d){
   if(d <= 0x9)
@@ -229,8 +229,8 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
     // Cap at max char
     chr_count = strlen(str);
-    if ( chr_count > 31 ) {
-      chr_count = 31;
+    if ( chr_count > 39 ) {
+      chr_count = 39;
     }
 
     // Convert ASCII string into UTF-16
