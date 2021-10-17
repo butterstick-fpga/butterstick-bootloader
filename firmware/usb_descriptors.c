@@ -25,6 +25,7 @@
 
 #include "tusb.h"
 #include "class/dfu/dfu_device.h"
+#include <generated/soc.h>
 #include "flash.h"
 
 //--------------------------------------------------------------------+
@@ -110,13 +111,13 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 // array of pointer to string descriptors
 char const* string_desc_arr [] =
 {
-  (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
-  "Good Stuff Department",       // 1: Manufacturer
-  "butterstick-fpga (dfu)",      // 2: Product
-  "",                            // 3: Serial, derived from FLASH UUID
-  "flash @0x200000 (gateware)",  // 4: DFU alt0 name
-  "flash @0x400000 (firmware)",  // 5: DFU alt1 name
-  "flash @0x800000 (extra)",     // 6: DFU alt2 name
+  (const char[]) { 0x09, 0x04 },             // 0: is supported language is English (0x0409)
+  "Good Stuff Department",                   // 1: Manufacturer
+  "butterstick (dfu) " CONFIG_REPO_GIT_DESC, // 2: Product
+  "",                                        // 3: Serial, derived from FLASH UUID
+  "flash @0x200000 (gateware)",              // 4: DFU alt0 name
+  "flash @0x400000 (firmware)",              // 5: DFU alt1 name
+  "flash @0x800000 (extra)",                 // 6: DFU alt2 name
 };
 
 // Microsoft Compatible ID Feature Descriptor

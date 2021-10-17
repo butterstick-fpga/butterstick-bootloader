@@ -208,11 +208,11 @@ class BaseSoC(SoCCore):
 
 
         #Add GIT repo to the firmware
-        git_rev_cmd = subprocess.Popen(["git", "rev-parse", "--short", "HEAD"],
+        git_rev_cmd = subprocess.Popen("git describe --tags --first-parent --always".split(),
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE)
         (git_stdout, _) = git_rev_cmd.communicate()
-        self.add_constant('__GIT_SHA1__',git_stdout.decode('ascii').strip('\n'))
+        self.add_constant('CONFIG_REPO_GIT_DESC',git_stdout.decode('ascii').strip('\n'))
 
     # This function will build our software and create a oc-fw.init file that can be patched directly into blockram in the FPGA
     def PackageFirmware(self, builder):  
