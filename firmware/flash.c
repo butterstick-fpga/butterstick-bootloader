@@ -1,10 +1,12 @@
-/*  Originally from: https://github.com/im-tomu/foboot/blob/master/sw/src/spi.c
- *  Apache License Version 2.0
- *	Copyright 2019 Sean 'xobs' Cross <sean@xobs.io>
+/*  
  *  Copyright 2020 Gregory Davill <greg.davill@gmail.com>
+ *
+ * Adapted from: https://github.com/norbertthiel
+ * src: https://github.com/litex-hub/litespi/issues/52#issuecomment-890787356
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -12,9 +14,6 @@
 
 #include "flash.h"
 
-/* Originally from: https://github.com/norbertthiel
- * src: https://github.com/litex-hub/litespi/issues/52#issuecomment-890787356
- */
 
 static uint32_t transfer_byte(uint8_t b)
 {
@@ -58,6 +57,13 @@ uint32_t spiflash_read_status_register(void)
 {
 	uint8_t buf[2];
     transfer_cmd((uint8_t[]){0x05, 0}, buf, 2);
+	return buf[1];
+}
+
+uint32_t spiflash_read_status_register(void)
+{
+	uint8_t buf[2];
+    transfer_cmd((uint8_t[]){0x35, 0}, buf, 2);
 	return buf[1];
 }
 
@@ -165,6 +171,49 @@ void spiflash_read_uuid(uint8_t* uuid) {
 
 	for(int i=0; i < 8; i++)
 		uuid[i] = transfer_byte(0xFF);
+
+	spiflash_core_master_cs_write(0);
+}
+
+bool spiflash_protection_read(void){
+
+	uint8_t status = spiflash_read_status_register();
+	if((status & 0b11111100) != 0b00110000){
+		return false;
+	}
+
+	uint8_t status2 = spiflash_read_status2_register();
+	if((status2 & 0b01000011) != 0b00000010){
+		return false;
+	}
+
+	return true;
+}
+
+void spiflash_protection_write(bool lock){
+
+	spiflash_write_enable();
+	
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(1);
+	spiflash_core_master_phyconfig_mask_write(1);
+	spiflash_core_master_cs_write(1);
+
+	transfer_byte(0x01);
+	transfer_byte(0b00110000);
+
+	spiflash_core_master_cs_write(0);
+
+	
+	spiflash_write_enable();
+	
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(1);
+	spiflash_core_master_phyconfig_mask_write(1);
+	spiflash_core_master_cs_write(1);
+
+	transfer_byte(0x31);
+	transfer_byte(lock ? 0b00000010 : 0b01000010);
 
 	spiflash_core_master_cs_write(0);
 }

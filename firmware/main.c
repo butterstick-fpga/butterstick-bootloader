@@ -125,6 +125,7 @@ int main(int i, char **c)
 	if(ctrl_scratch_read() == 0){
 		enable_bootloader_alt();
 		bl_upgrade = true;
+		spiflash_protection_write(false);
 	}
 
 	uint8_t last_button = button_in_read();
@@ -178,6 +179,10 @@ int main(int i, char **c)
 	irq_setie(0);
 	usb_device_controller_connect_write(0);	
 	msleep(20);	
+
+	if(spiflash_protection_read() == false){
+		spiflash_protection_write(true);
+	}
 
 	while(1){
 		reset_out_write(1);
