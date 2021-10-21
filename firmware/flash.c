@@ -60,7 +60,7 @@ uint32_t spiflash_read_status_register(void)
 	return buf[1];
 }
 
-uint32_t spiflash_read_status_register(void)
+uint32_t spiflash_read_status2_register(void)
 {
 	uint8_t buf[2];
     transfer_cmd((uint8_t[]){0x35, 0}, buf, 2);
