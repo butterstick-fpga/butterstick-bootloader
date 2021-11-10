@@ -230,3 +230,61 @@ void spiflash_protection_write(bool lock){
 	}
 }
 
+void spiflash_read_security_register(uint8_t security_page, uint8_t* buff){
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(1);
+	spiflash_core_master_phyconfig_mask_write(1);
+	spiflash_core_master_cs_write(1);
+
+	transfer_byte(0x48);
+	transfer_byte(0x00);
+	transfer_byte(security_page << 4);
+	transfer_byte(0x00);
+
+	for(int byte_index = 0; byte_index < 256; byte_index++){
+		*buff++ = transfer_byte(0);
+	}
+
+	spiflash_core_master_cs_write(0);	
+}
+
+void spiflash_write_security_register(uint8_t security_page, uint8_t* buff){
+	spiflash_write_enable();
+	
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(1);
+	spiflash_core_master_phyconfig_mask_write(1);
+	spiflash_core_master_cs_write(1);
+
+	transfer_byte(0x42);
+	transfer_byte(0x00);
+	transfer_byte(security_page << 4);
+	transfer_byte(0x00);
+
+	for(int byte_index = 0; byte_index < 256; byte_index++){
+		transfer_byte(*buff++);
+	}
+
+	spiflash_core_master_cs_write(0);	
+	
+	while(spiflash_read_status_register() & 1){}
+}
+
+void spiflash_erase_security_register(uint8_t security_page){
+	spiflash_write_enable();
+		
+	spiflash_core_master_phyconfig_len_write(8);
+	spiflash_core_master_phyconfig_width_write(1);
+	spiflash_core_master_phyconfig_mask_write(1);
+	spiflash_core_master_cs_write(1);
+
+	transfer_byte(0x44);
+	transfer_byte(0x00);
+	transfer_byte(security_page << 4);
+	transfer_byte(0x00);
+
+	spiflash_core_master_cs_write(0);	
+
+	while(spiflash_read_status_register() & 1){}
+}
+

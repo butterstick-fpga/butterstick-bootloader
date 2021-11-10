@@ -20,20 +20,20 @@
 
 #include "tusb.h"
 
-
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
 //--------------------------------------------------------------------+
-typedef struct{
+typedef struct
+{
 	uint32_t address;
 	uint32_t length;
 } memory_offest;
 
 memory_offest const alt_offsets[] = {
-	{.address=0x200000, .length=0x200000}, /* Main Gateware */
-	{.address=0x400000, .length=0x800000}, /* Main Firmawre */
-	{.address=0x800000, .length=0x800000}, /* Extra */
-	{.address=0x000000, .length=0x200000} /* Bootloader */
+	{.address = 0x200000, .length = 0x200000}, /* Main Gateware */
+	{.address = 0x400000, .length = 0x800000}, /* Main Firmawre */
+	{.address = 0x800000, .length = 0x800000}, /* Extra */
+	{.address = 0x000000, .length = 0x200000}  /* Bootloader */
 };
 
 static int complete_timeout;
@@ -120,6 +120,10 @@ int main(int i, char **c)
 	irq_setie(1);
 	uart_init();
 
+	/* Enable VccIo
+	 * Specifically we need ch2 enabled for the USB ULPI.
+	 * But the hardware requires that we configure them all
+	 */
 	vccio_ch0_write(45000); // 1v8
 	vccio_ch1_write(45000); // 1v8
 	vccio_ch2_write(45000); // 1v8
@@ -132,45 +136,82 @@ int main(int i, char **c)
 	msleep(20);
 
 	/* Handle soft-reset to unlock bootloader partition */
-	if(ctrl_scratch_read() == 0){
+	if (ctrl_scratch_read() == 0)
+	{
 		enable_bootloader_alt();
 		bl_upgrade = true;
 		spiflash_protection_write(false);
-	}else if(spiflash_protection_read() == false){
+	}
+	else if (spiflash_protection_read() == false)
+	{
 		spiflash_protection_write(true);
 	}
 
 	uint8_t last_button = button_in_read();
 	uint32_t button_count = board_millis();
 
-	if((button_in_read() & 1) == 0){
+	/* Check for magic bytes in the Security page3 */
+	const uint32_t BL_MAGIC0 = 0x021b3bcd;
+	const uint32_t BL_MAGIC1 = 0xc4f86d8a;
+
+	uint8_t buf[256];
+	bool stay_in_bootloader = false;
+	spiflash_read_security_register(3, buf);
+
+	if ((buf[0] == ((BL_MAGIC0 >> 0) & 0xFF)) &&
+		(buf[1] == ((BL_MAGIC0 >> 8) & 0xFF)) &&
+		(buf[2] == ((BL_MAGIC0 >> 16) & 0xFF)) &&
+		(buf[3] == ((BL_MAGIC0 >> 24) & 0xFF)))
+	{
+		/* Found BL_MAGIC0, stay in bootolader, but clear this flag */
+		stay_in_bootloader = true;
+		spiflash_write_enable();
+		spiflash_erase_security_register(3);
+	}
+	else if ((buf[0] == ((BL_MAGIC1 >> 0) & 0xFF)) &&
+			 (buf[1] == ((BL_MAGIC1 >> 8) & 0xFF)) &&
+			 (buf[2] == ((BL_MAGIC1 >> 16) & 0xFF)) &&
+			 (buf[3] == ((BL_MAGIC1 >> 24) & 0xFF)))
+	{
+		/* Found BL_MAGIC1, stay in bootolader, but don't clear this flag */
+		stay_in_bootloader = true;
+	}
+
+
+
+	if (((button_in_read() & 1) == 0) || stay_in_bootloader)
+	{
 
 		timer_init();
 		tusb_init();
 
-		while(1)
+		while (1)
 		{
 			tud_task(); // tinyusb device task
 			led_blinking_task();
 
-			if((button_in_read() == 0)){
-				
-				if((board_millis() - button_count) > 5000){
-					
+			if ((button_in_read() == 0))
+			{
+
+				if ((board_millis() - button_count) > 5000)
+				{
+
 					ctrl_scratch_write(0);
 
 					irq_setie(0);
-					usb_device_controller_connect_write(0);	
-					msleep(20);	
-					
+					usb_device_controller_connect_write(0);
+					msleep(20);
+
 					ctrl_reset_write(1);
 				}
 			}
-			else{
+			else
+			{
 				button_count = board_millis();
 			}
 
-			if(complete_timeout){
+			if (complete_timeout)
+			{
 				static uint32_t start_ms = 0;
 
 				// timeout in ms
@@ -179,33 +220,68 @@ int main(int i, char **c)
 					start_ms = board_millis();
 
 					complete_timeout--;
-					if(complete_timeout == 0)
+					if (complete_timeout == 0)
 						break;
 				}
-					
 			}
 		}
 	}
 
 	/* Reboot to our user bitstream */
 	irq_setie(0);
-	usb_device_controller_connect_write(0);	
-	msleep(20);	
+	usb_device_controller_connect_write(0);
+	msleep(20);
 
-	if(spiflash_protection_read() == false){
+	if (spiflash_protection_read() == false)
+	{
 		spiflash_protection_write(true);
 	}
 
-	while(1){
+	while (1)
+	{
 		reset_out_write(1);
 	}
 
 	return 0;
 }
 
-const uint32_t idle_rainbow[] = {0x2aaffc00,0x38000000,0x2aaffc00,0x2aaffc00,0x38000000,0x2aaffc00,0x2aaffc00,0x2aaffc00,0x2aaffc00,0x38000000,0x38000000,0x2aaffc00,0x2aaffc00,0x38000000,0x2aaffc00,0x38000000,0x2aaffc00,0x38000000,0x38000000,0x38000000,0x38000000,0x2aaffc00,0x2aaffc00,0x38000000,0x2aaffc00,0x2aaffc00,0x38000000,0x2aaffc00,0x2aaffc00,0x2aaffc00,0x2aaffc00,0x38000000,};
-const uint16_t sine_falloff_fade[] = {0x3ff,0x3f8,0x3ea,0x3cf,0x3ae,0x387,0x354,0x31b,0x2df,0x29f,0x256,0x210,0x1c5,0x17e,0x138,0x0f4,0x0b8,0x07f,0x04d,0x028,0x00c,0x000,0x000,0x000,0x000,0x000,0x000,0x000,0x000,0x000,0x000,0x000};
-const uint16_t sine_pulse_fade[] = {0x000,0x000,0x000,0x017,0x04d,0x09a,0x0f4,0x15a,0x1c5,0x235,0x29f,0x2fd,0x354,0x39a,0x3cf,0x3f1,0x3ff,0x3f1,0x3cf,0x39a,0x354,0x2fd,0x29f,0x235,0x1c5,0x15a,0x0f4,0x09a,0x04d,0x017,0x000,0x000};
+const uint32_t idle_rainbow[] = {
+	0x2aaffc00,
+	0x38000000,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x38000000,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x38000000,
+	0x38000000,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x38000000,
+	0x2aaffc00,
+	0x38000000,
+	0x2aaffc00,
+	0x38000000,
+	0x38000000,
+	0x38000000,
+	0x38000000,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x38000000,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x38000000,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x2aaffc00,
+	0x38000000,
+};
+
+const uint16_t sine_falloff_fade[] = {0x3ff, 0x3f8, 0x3ea, 0x3cf, 0x3ae, 0x387, 0x354, 0x31b, 0x2df, 0x29f, 0x256, 0x210, 0x1c5, 0x17e, 0x138, 0x0f4, 0x0b8, 0x07f, 0x04d, 0x028, 0x00c, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000};
+const uint16_t sine_pulse_fade[] = {0x000, 0x000, 0x000, 0x017, 0x04d, 0x09a, 0x0f4, 0x15a, 0x1c5, 0x235, 0x29f, 0x2fd, 0x354, 0x39a, 0x3cf, 0x3f1, 0x3ff, 0x3f1, 0x3cf, 0x39a, 0x354, 0x2fd, 0x29f, 0x235, 0x1c5, 0x15a, 0x0f4, 0x09a, 0x04d, 0x017, 0x000, 0x000};
 
 void led_blinking_task(void)
 {
@@ -218,92 +294,100 @@ void led_blinking_task(void)
 	start_ms += 40;
 	count++;
 
-	volatile uint32_t *p = (uint32_t*)CSR_LEDS_OUT0_ADDR;
-	switch(blink_interval_ms){
-		case BLINK_DFU_IDLE:
+	volatile uint32_t *p = (uint32_t *)CSR_LEDS_OUT0_ADDR;
+	switch (blink_interval_ms)
+	{
+	case BLINK_DFU_IDLE:
+	{
+		if (bl_upgrade)
 		{
-			if(bl_upgrade){
-				blink_interval_ms = BLINK_DFU_IDLE_BOOTLOADER;
-				break;
-			}
-
-			/* Pick colour from idle_rainbow. Then interger multiply it with a sine_falloff_fade */
-			int colour = (((count  + 10) / 32)) % 32;
-
-			for(int i = 0; i < 4; i++){
-				int c = (count + i*2);
-				int g = (((idle_rainbow[colour] >> 20) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
-				int b = (((idle_rainbow[colour] >> 10) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
-				int r = (((idle_rainbow[colour] >> 0 ) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
-				p[i] = (g << 20) | (b << 10) | (r);
-			}
-			for(int i = 0; i < 3; i++){
-				int c = (count - (i - 2)*2);
-
-				int g = (((idle_rainbow[colour] >> 20) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
-				int b = (((idle_rainbow[colour] >> 10) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
-				int r = (((idle_rainbow[colour] >> 0 ) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
-				p[4+i] = (g << 20) | (b << 10) | (r);
-
-				//p[4 + i] = (uint32_t)sine_falloff_fade[c % 32] << colour; /* BLUE */
-			}
+			blink_interval_ms = BLINK_DFU_IDLE_BOOTLOADER;
+			break;
 		}
-		break;
 
-		default:
+		/* Pick colour from idle_rainbow. Then interger multiply it with a sine_falloff_fade */
+		int colour = (((count + 10) / 32)) % 32;
+
+		for (int i = 0; i < 4; i++)
 		{
-			for(int i = 0; i < 4; i++){
-				p[i] = idle_rainbow[(count + i) % 32];
-			}
-			for(int i = 0; i < 3; i++){
-				p[4 + i] = idle_rainbow[(count + 2 - i) % 32];
-			}
+			int c = (count + i * 2);
+			int g = (((idle_rainbow[colour] >> 20) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+			int b = (((idle_rainbow[colour] >> 10) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+			int r = (((idle_rainbow[colour] >> 0) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+			p[i] = (g << 20) | (b << 10) | (r);
 		}
-		break;
-
-		case BLINK_DFU_DOWNLOAD:
+		for (int i = 0; i < 3; i++)
 		{
-			for(int i = 0; i < 7; i++){
-				p[i] = (uint32_t)sine_falloff_fade[((count<<1) + i*4) % 32] << 20; /* GREEN*/
-			}
-		}
-		break;
-		
+			int c = (count - (i - 2) * 2);
 
-		case BLINK_DFU_IDLE_BOOTLOADER:
+			int g = (((idle_rainbow[colour] >> 20) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+			int b = (((idle_rainbow[colour] >> 10) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+			int r = (((idle_rainbow[colour] >> 0) & 0x3FF) * sine_falloff_fade[c % 32]) >> 10;
+			p[4 + i] = (g << 20) | (b << 10) | (r);
+
+			//p[4 + i] = (uint32_t)sine_falloff_fade[c % 32] << colour; /* BLUE */
+		}
+	}
+	break;
+
+	default:
+	{
+		for (int i = 0; i < 4; i++)
 		{
-			for(int i = 0; i < 7; i++){
-				p[i] = (uint32_t)sine_pulse_fade[(count + i*5) % 32] << 0; // RED
-			}
+			p[i] = idle_rainbow[(count + i) % 32];
 		}
-		break;
-
-		case BLINK_DFU_ERROR:
+		for (int i = 0; i < 3; i++)
 		{
-			for(int i = 0; i < 4; i++){
-				int c = ((count << 2) + i*2);
-				int r = sine_falloff_fade[c % 32];
-				p[i] = (r);
-			}
-			for(int i = 0; i < 3; i++){
-				int c = ((count << 2) - (i - 2)*2);
-
-				int r = sine_falloff_fade[c % 32];
-				p[4+i] = (r);
-			}
+			p[4 + i] = idle_rainbow[(count + 2 - i) % 32];
 		}
-		break;
+	}
+	break;
 
-		case BLINK_DFU_SLEEP:
+	case BLINK_DFU_DOWNLOAD:
+	{
+		for (int i = 0; i < 7; i++)
 		{
-			for(int i = 1; i < 7; i++){
-				p[i] = 0;
-			}
-			p[0] = ((uint32_t)sine_pulse_fade[(count) % 32]/4) << 20; // GREEN
+			p[i] = (uint32_t)sine_falloff_fade[((count << 1) + i * 4) % 32] << 20; /* GREEN*/
 		}
-		break;
-		
-		
+	}
+	break;
+
+	case BLINK_DFU_IDLE_BOOTLOADER:
+	{
+		for (int i = 0; i < 7; i++)
+		{
+			p[i] = (uint32_t)sine_pulse_fade[(count + i * 5) % 32] << 0; // RED
+		}
+	}
+	break;
+
+	case BLINK_DFU_ERROR:
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			int c = ((count << 2) + i * 2);
+			int r = sine_falloff_fade[c % 32];
+			p[i] = (r);
+		}
+		for (int i = 0; i < 3; i++)
+		{
+			int c = ((count << 2) - (i - 2) * 2);
+
+			int r = sine_falloff_fade[c % 32];
+			p[4 + i] = (r);
+		}
+	}
+	break;
+
+	case BLINK_DFU_SLEEP:
+	{
+		for (int i = 1; i < 7; i++)
+		{
+			p[i] = 0;
+		}
+		p[0] = ((uint32_t)sine_pulse_fade[(count) % 32] / 4) << 20; // GREEN
+	}
+	break;
 	}
 }
 
@@ -314,13 +398,13 @@ void led_blinking_task(void)
 // Invoked when device is mounted
 void tud_mount_cb(void)
 {
-  blink_interval_ms = BLINK_DFU_IDLE;
+	blink_interval_ms = BLINK_DFU_IDLE;
 }
 
 // Invoked when device is unmounted
 void tud_umount_cb(void)
 {
-  blink_interval_ms = BLINK_DFU_IDLE;
+	blink_interval_ms = BLINK_DFU_IDLE;
 }
 
 // Invoked when usb bus is suspended
@@ -328,14 +412,14 @@ void tud_umount_cb(void)
 // Within 7ms, device must draw an average of current less than 2.5 mA from bus
 void tud_suspend_cb(bool remote_wakeup_en)
 {
-  (void) remote_wakeup_en;
-  blink_interval_ms = BLINK_DFU_SLEEP;
+	(void)remote_wakeup_en;
+	blink_interval_ms = BLINK_DFU_SLEEP;
 }
 
 // Invoked when usb bus is resumed
 void tud_resume_cb(void)
 {
-  blink_interval_ms = BLINK_DFU_IDLE;
+	blink_interval_ms = BLINK_DFU_IDLE;
 }
 
 //--------------------------------------------------------------------+
@@ -348,30 +432,31 @@ void tud_resume_cb(void)
 // During this period, USB host won't try to communicate with us.
 uint32_t tud_dfu_get_timeout_cb(uint8_t alt, uint8_t state)
 {
-  if ( state == DFU_DNBUSY )
-  {
-    return 1; /* Request we are polled in 1ms */
-  }
-  else if (state == DFU_MANIFEST)
-  {
-    // since we don't buffer entire image and do any flashing in manifest stage
-    return 0;
-  }
+	if (state == DFU_DNBUSY)
+	{
+		return 1; /* Request we are polled in 1ms */
+	}
+	else if (state == DFU_MANIFEST)
+	{
+		// since we don't buffer entire image and do any flashing in manifest stage
+		return 0;
+	}
 
-  return 0;
+	return 0;
 }
 
 // Invoked when received DFU_DNLOAD (wLength>0) following by DFU_GETSTATUS (state=DFU_DNBUSY) requests
 // This callback could be returned before flashing op is complete (async).
 // Once finished flashing, application must call tud_dfu_finish_flashing()
-void tud_dfu_download_cb(uint8_t alt, uint16_t block_num, uint8_t const* data, uint16_t length)
+void tud_dfu_download_cb(uint8_t alt, uint16_t block_num, uint8_t const *data, uint16_t length)
 {
-  (void) alt;
-  (void) block_num;
+	(void)alt;
+	(void)block_num;
 
 	blink_interval_ms = BLINK_DFU_DOWNLOAD;
 
-	if((block_num * CFG_TUD_DFU_XFER_BUFSIZE) >= alt_offsets[alt].length){
+	if ((block_num * CFG_TUD_DFU_XFER_BUFSIZE) >= alt_offsets[alt].length)
+	{
 		// flashing op for download length error
 		tud_dfu_finish_flashing(DFU_STATUS_ERR_ADDRESS);
 
@@ -380,34 +465,41 @@ void tud_dfu_download_cb(uint8_t alt, uint16_t block_num, uint8_t const* data, u
 		return;
 	}
 
-  	uint32_t flash_address = alt_offsets[alt].address + block_num * CFG_TUD_DFU_XFER_BUFSIZE;
+	uint32_t flash_address = alt_offsets[alt].address + block_num * CFG_TUD_DFU_XFER_BUFSIZE;
 
 	/* First block in 64K erase block */
-	if((flash_address & (FLASH_64K_BLOCK_ERASE_SIZE-1)) == 0){
-		
+	if ((flash_address & (FLASH_64K_BLOCK_ERASE_SIZE - 1)) == 0)
+	{
+
 		spiflash_write_enable();
 		spiflash_sector_erase(flash_address);
 
 		/* While FLASH erase is in progress update LEDs */
-		while(spiflash_read_status_register() & 1){ led_blinking_task(); };
+		while (spiflash_read_status_register() & 1)
+		{
+			led_blinking_task();
+		};
 	}
-  
+
 	//printf("tud_dfu_download_cb(), alt=%u, block=%u, flash_address=%08x\n", alt, block_num, flash_address);
 
-	for(int i = 0; i < CFG_TUD_DFU_XFER_BUFSIZE / 256; i++){
+	for (int i = 0; i < CFG_TUD_DFU_XFER_BUFSIZE / 256; i++)
+	{
 
 		spiflash_write_enable();
 		spiflash_page_program(flash_address, data, 256);
 		flash_address += 256;
 		data += 256;
 
-
 		/* While FLASH erase is in progress update LEDs */
-		while(spiflash_read_status_register() & 1){ led_blinking_task(); };
+		while (spiflash_read_status_register() & 1)
+		{
+			led_blinking_task();
+		};
 	}
 
-  // flashing op for download complete without error
-  tud_dfu_finish_flashing(DFU_STATUS_OK);
+	// flashing op for download complete without error
+	tud_dfu_finish_flashing(DFU_STATUS_OK);
 }
 
 // Invoked when download process is complete, received DFU_DNLOAD (wLength=0) following by DFU_GETSTATUS (state=Manifest)
@@ -415,18 +507,18 @@ void tud_dfu_download_cb(uint8_t alt, uint16_t block_num, uint8_t const* data, u
 // Once finished flashing, application must call tud_dfu_finish_flashing()
 void tud_dfu_manifest_cb(uint8_t alt)
 {
-  (void) alt;
-  blink_interval_ms = BLINK_DFU_DOWNLOAD;
+	(void)alt;
+	blink_interval_ms = BLINK_DFU_DOWNLOAD;
 
-  // flashing op for manifest is complete without error
-  // Application can perform checksum, should it fail, use appropriate status such as errVERIFY.
-  tud_dfu_finish_flashing(DFU_STATUS_OK);
+	// flashing op for manifest is complete without error
+	// Application can perform checksum, should it fail, use appropriate status such as errVERIFY.
+	tud_dfu_finish_flashing(DFU_STATUS_OK);
 }
 
 // Invoked when the Host has terminated a download or upload transfer
 void tud_dfu_abort_cb(uint8_t alt)
 {
-  (void) alt;
+	(void)alt;
 	blink_interval_ms = BLINK_DFU_ERROR;
 }
 
