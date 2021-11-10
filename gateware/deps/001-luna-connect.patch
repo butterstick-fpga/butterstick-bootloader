@@ -44,7 +44,7 @@ index 67e4c6b..6cbfee7 100644
              m.d.comb += self.connect.eq(self._connect.r_data)
              with m.If(self._connect.w_stb):
                  m.d.usb += self._connect.r_data.eq(self._connect.w_data)
-+            
++
 +            m.d.comb += self.reset.eq(self._reset.r_data)
 +            with m.If(self._reset.w_stb):
 +                m.d.usb += self._reset.r_data.eq(self._reset.w_data)
