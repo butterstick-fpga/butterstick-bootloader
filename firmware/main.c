@@ -122,10 +122,13 @@ int main(int i, char **c)
 
 	msleep(100);
 
+	/* Handle soft-reset to unlock bootloader partition */
 	if(ctrl_scratch_read() == 0){
 		enable_bootloader_alt();
 		bl_upgrade = true;
 		spiflash_protection_write(false);
+	}else if(spiflash_protection_read() == false){
+		spiflash_protection_write(true);
 	}
 
 	uint8_t last_button = button_in_read();
