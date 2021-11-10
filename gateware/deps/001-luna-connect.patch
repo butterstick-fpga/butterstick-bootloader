@@ -1,5 +1,5 @@
 diff --git a/luna/gateware/usb/usb2/device.py b/luna/gateware/usb/usb2/device.py
-index 67e4c6b..4956cd3 100644
+index 67e4c6b..6cbfee7 100644
 --- a/luna/gateware/usb/usb2/device.py
 +++ b/luna/gateware/usb/usb2/device.py
 @@ -232,7 +232,7 @@ class USBDevice(Elaboratable):
@@ -11,3 +11,43 @@ index 67e4c6b..4956cd3 100644
              reset_sequencer.line_state      .eq(self.utmi.line_state),
          ]
  
+@@ -641,7 +641,8 @@ try:
+             #
+             # I/O port
+             #
+-            self.connect   = Signal(reset=1)
++            self.connect   = Signal()
++            self.reset     = Signal()
+             self.bus_reset = Signal()
+ 
+ 
+@@ -654,6 +655,10 @@ try:
+                 Set this bit to '1' to allow the associated USB device to connect to a host.
+             """)
+ 
++            self._reset = regs.csr(1, "rw", desc="""
++                Set this bit to '1' to perform manual reset of USB logic
++            """)
++
+             self._speed = regs.csr(2, "r", desc="""
+                 Indicates the current speed of the USB device. 0 indicates High; 1 => Full,
+                 2 => Low, and 3 => SuperSpeed (incl SuperSpeed+).
+@@ -663,6 +668,7 @@ try:
+                 Interrupt that occurs when a USB bus reset is received.
+             """)
+ 
++
+             # Wishbone connection.
+             self._bridge    = self.bridge(data_width=32, granularity=8, alignment=2)
+             self.bus        = self._bridge.bus
+@@ -696,6 +702,10 @@ try:
+             m.d.comb += self.connect.eq(self._connect.r_data)
+             with m.If(self._connect.w_stb):
+                 m.d.usb += self._connect.r_data.eq(self._connect.w_data)
++            
++            m.d.comb += self.reset.eq(self._reset.r_data)
++            with m.If(self._reset.w_stb):
++                m.d.usb += self._reset.r_data.eq(self._reset.w_data)
+ 
+             # Reset-detection event.
+             m.d.comb += self._reset_irq.stb.eq(self.bus_reset)

@@ -106,7 +106,8 @@ class LunaEpTri(Elaboratable):
         m.submodules.usb_reset = controller = PHYResetController(clock_frequency=60e6, reset_length=10e-3, stop_length=2e-4, power_on_reset=True)
         m.d.comb += [
             ResetSignal("usb")  .eq(controller.phy_reset),
-            self.usb_holdoff    .eq(controller.phy_stop)
+            self.usb_holdoff    .eq(controller.phy_stop),
+            controller.trigger  .eq(self.usb_device_controller.reset)
         ]
 
 

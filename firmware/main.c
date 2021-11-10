@@ -120,7 +120,16 @@ int main(int i, char **c)
 	irq_setie(1);
 	uart_init();
 
-	msleep(100);
+	vccio_ch0_write(45000); // 1v8
+	vccio_ch1_write(45000); // 1v8
+	vccio_ch2_write(45000); // 1v8
+	msleep(10);
+	vccio_enable_write(1);
+
+	usb_device_controller_reset_write(1);
+	msleep(20);
+	usb_device_controller_reset_write(0);
+	msleep(20);
 
 	/* Handle soft-reset to unlock bootloader partition */
 	if(ctrl_scratch_read() == 0){

@@ -40,7 +40,7 @@ from litex.soc.cores.spi_flash import SpiFlashDualQuad
 from rtl.platform import butterstick_r1d0
 from rtl.eptri import LunaEpTriWrapper
 from rtl.rgb import Leds
-
+from rtl.vccio import VccIo
 
 # CRG ---------------------------------------------------------------------------------------------
 
@@ -154,22 +154,7 @@ class BaseSoC(SoCCore):
         self.submodules.crg = crg = CRG(platform, sys_clk_freq)
 
         # VCCIO Control ----------------------------------------------------------------------------
-        vccio_pins = platform.request("vccio_ctrl")
-        pwm_timer = Signal(14)
-        self.sync += pwm_timer.eq(pwm_timer + 1)
-        self.comb += [
-            vccio_pins.pdm[0].eq(pwm_timer < int(2**14 * (0.13))),  # 3.3v
-            vccio_pins.pdm[1].eq(pwm_timer < int(2**14 * (0.13))),  # 3.3v
-            vccio_pins.pdm[2].eq(pwm_timer < int(2**14 * (0.70))),  # 1.8v
-        ]
-        counter = Signal(32)
-        self.sync += [
-            If(counter[16] == 0,
-                counter.eq(counter + 1),
-            ).Else(
-                vccio_pins.en.eq(1),
-            )
-        ]
+        self.submodules.vccio = VccIo(platform.request("vccio_ctrl"))
 
         # SPI Flash --------------------------------------------------------------------------------
         from litespi.modules import W25Q128JV
