@@ -30,9 +30,9 @@ typedef struct
 } memory_offest;
 
 memory_offest const alt_offsets[] = {
-	{.address = 0x200000, .length = 0x200000}, /* Main Gateware */
-	{.address = 0x400000, .length = 0x800000}, /* Main Firmawre */
-	{.address = 0x800000, .length = 0x800000}, /* Extra */
+	{.address = 0x200000, .length = 0x600000}, /* Main Gateware */
+	{.address = 0x800000, .length = 0x400000}, /* Main Firmawre */
+	{.address = 0xC00000, .length = 0x400000}, /* Extra */
 	{.address = 0x000000, .length = 0x200000}  /* Bootloader */
 };
 
