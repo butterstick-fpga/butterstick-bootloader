@@ -35,7 +35,6 @@ from litex.soc.interconnect.csr import *
 from litex.soc.cores.clock import *
 from litex.soc.cores.clock.common import period_ns
 from litex.soc.cores.gpio import GPIOOut, GPIOIn
-from litex.soc.cores.spi_flash import SpiFlashDualQuad
 
 from rtl.platform import butterstick_r1d0
 from rtl.eptri import LunaEpTriWrapper
