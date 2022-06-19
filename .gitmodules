@@ -22,7 +22,7 @@
 	url = https://github.com/litex-hub/pythondata-cpu-vexriscv.git
 [submodule "gateware/deps/lambdasoc"]
 	path = gateware/deps/lambdasoc
-	url = https://github.com/gregdavill/lambdasoc.git
+	url = https://github.com/lambdaconcept/lambdasoc.git
 [submodule "gateware/deps/minerva"]
 	path = gateware/deps/minerva
 	url = https://github.com/lambdaconcept/minerva.git
@@ -41,3 +41,5 @@
 [submodule "gateware/deps/amaranth-stdio"]
 	path = gateware/deps/amaranth-stdio
 	url = https://github.com/amaranth-lang/amaranth-stdio.git
+[submodule "deps/lambdasoc"]
+	url = https://github.com/lambdaconcept/lambdasoc.git

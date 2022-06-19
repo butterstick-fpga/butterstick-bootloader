@@ -1,17 +1,52 @@
+diff --git a/luna/gateware/soc/simplesoc.py b/luna/gateware/soc/simplesoc.py
+index 51234f6..db19436 100644
+--- a/luna/gateware/soc/simplesoc.py
++++ b/luna/gateware/soc/simplesoc.py
+@@ -13,6 +13,10 @@ import logging
+ from amaranth                import Elaboratable, Module
+ from amaranth_soc            import wishbone
+ 
++import sys
++
++print(sys.path)
++
+ from lambdasoc.soc.cpu       import CPUSoC
+ from lambdasoc.cpu.minerva   import MinervaCPU
+ from lambdasoc.periph.intc   import GenericInterruptController
+@@ -262,16 +266,16 @@ class SimpleSoC(CPUSoC, Elaboratable):
+             resources = peripheral.all_resources()
+ 
+             # ... find the peripheral's resources...
+-            for resource, (register_offset, register_end_offset, _local_granularity) in resources:
++            for resource_info in resources:
+ 
+                 if self._build_bios and omit_bios_mem:
+                     # If we're omitting bios resources, skip the BIOS ram/rom.
+-                    if (self.ram._mem is resource) or (self.rom._mem is resource):
++                    if (self.ram._mem is resource_info.resource) or (self.rom._mem is resource_info.resource):
+                         continue
+ 
+                 # ... and extract the peripheral's range/vitals...
+-                size = register_end_offset - register_offset
+-                yield resource, peripheral_start + register_offset, size
++                size = resource_info.end - resource_info.start
++                yield resource_info.resource, peripheral_start + resource_info.start, size
+ 
+ 
+     def build(self, name=None, build_dir="build"):
 diff --git a/luna/gateware/usb/usb2/device.py b/luna/gateware/usb/usb2/device.py
-index 67e4c6b..6cbfee7 100644
+index a2ea4d9..6017385 100644
 --- a/luna/gateware/usb/usb2/device.py
 +++ b/luna/gateware/usb/usb2/device.py
-@@ -232,7 +232,7 @@ class USBDevice(Elaboratable):
+@@ -229,6 +229,7 @@ class USBDevice(Elaboratable):
          m.d.comb += [
              reset_sequencer.bus_busy        .eq(self.bus_busy),
  
--            reset_sequencer.vbus_connected  .eq(~self.utmi.session_end),
-+            reset_sequencer.vbus_connected  .eq(~self.utmi.session_end & self.connect),
++            reset_sequencer.reset           .eq(~self.connect),
+             reset_sequencer.vbus_connected  .eq(~self.utmi.session_end),
              reset_sequencer.line_state      .eq(self.utmi.line_state),
          ]
- 
-@@ -641,7 +641,8 @@ try:
+@@ -657,7 +658,8 @@ try:
              #
              # I/O port
              #
@@ -21,7 +56,7 @@ index 67e4c6b..6cbfee7 100644
              self.bus_reset = Signal()
  
  
-@@ -654,6 +655,10 @@ try:
+@@ -670,6 +672,10 @@ try:
                  Set this bit to '1' to allow the associated USB device to connect to a host.
              """)
  
@@ -32,22 +67,59 @@ index 67e4c6b..6cbfee7 100644
              self._speed = regs.csr(2, "r", desc="""
                  Indicates the current speed of the USB device. 0 indicates High; 1 => Full,
                  2 => Low, and 3 => SuperSpeed (incl SuperSpeed+).
-@@ -663,6 +668,7 @@ try:
-                 Interrupt that occurs when a USB bus reset is received.
-             """)
- 
-+
-             # Wishbone connection.
-             self._bridge    = self.bridge(data_width=32, granularity=8, alignment=2)
-             self.bus        = self._bridge.bus
-@@ -696,6 +702,10 @@ try:
-             m.d.comb += self.connect.eq(self._connect.r_data)
+@@ -713,6 +719,10 @@ try:
              with m.If(self._connect.w_stb):
                  m.d.usb += self._connect.r_data.eq(self._connect.w_data)
-+
+ 
 +            m.d.comb += self.reset.eq(self._reset.r_data)
 +            with m.If(self._reset.w_stb):
 +                m.d.usb += self._reset.r_data.eq(self._reset.w_data)
- 
++ 
              # Reset-detection event.
              m.d.comb += self._reset_irq.stb.eq(self.bus_reset)
+ 
+diff --git a/luna/gateware/usb/usb2/reset.py b/luna/gateware/usb/usb2/reset.py
+index 2b0fa58..0ace6cb 100644
+--- a/luna/gateware/usb/usb2/reset.py
++++ b/luna/gateware/usb/usb2/reset.py
+@@ -66,6 +66,8 @@ class USBResetSequencer(Elaboratable):
+     vbus_connected: Signal(), input
+         Indicates that the device is connected to VBUS. When this is de-asserted, the device will
+         be held in perpetual bus reset, and reset handshaking will be disabled.
++    reset: Signal(), input
++        signal from the SoC, When this is asserted, the device will be held in perpetual bus reset
+     line_state: Signal(2), input
+         The UTMI linestate signals; used to read the current state of the USB D+ and D- lines.
+ 
+@@ -124,6 +126,7 @@ class USBResetSequencer(Elaboratable):
+ 
+         self.bus_busy           = Signal()
+         self.vbus_connected     = Signal()
++        self.reset              = Signal()
+         self.line_state         = Signal(2)
+ 
+         self.bus_reset          = Signal()
+@@ -205,11 +208,12 @@ class USBResetSequencer(Elaboratable):
+                     m.d.usb += timer.eq(0)
+ 
+ 
+-                # If VBUS isn't connected, don't go through the whole reset process;
++                # If VBUS isn't connected, or SoC instructs a reset, don't go through 
++                # the whole reset process;
+                 # but also consider ourselves permanently in reset. This ensures we
+                 # don't progress through the reset FSM; but also ensures the device
+                 # state starts fresh with each plug.
+-                with m.If(~self.vbus_connected):
++                with m.If(~self.vbus_connected | self.reset):
+                     m.d.usb  += timer.eq(0)
+                     m.d.comb += self.bus_reset.eq(1)
+ 
+@@ -249,7 +253,7 @@ class USBResetSequencer(Elaboratable):
+                 # If VBUS isn't connected, our device/host relationship is effectively
+                 # a blank state. We'll want to present our detection pull-up to the host,
+                 # so we'll drop out of high speed.
+-                with m.If(~self.vbus_connected):
++                with m.If(~self.vbus_connected | self.reset):
+                     m.d.comb += self.bus_reset.eq(1)
+                     m.next = 'IS_LOW_OR_FULL_SPEED'
+ 
