@@ -11,12 +11,6 @@
 [submodule "gateware/deps/litex"]
 	path = gateware/deps/litex
 	url = https://github.com/enjoy-digital/litex.git
-[submodule "gateware/deps/nmigen"]
-	path = gateware/deps/nmigen
-	url = https://github.com/nmigen/nmigen.git
-[submodule "gateware/deps/nmigen-soc"]
-	path = gateware/deps/nmigen-soc
-	url = https://github.com/nmigen/nmigen-soc.git
 [submodule "gateware/deps/python-usb-protocol"]
 	path = gateware/deps/python-usb-protocol
 	url = https://github.com/usb-tools/python-usb-protocol
@@ -29,9 +23,6 @@
 [submodule "gateware/deps/lambdasoc"]
 	path = gateware/deps/lambdasoc
 	url = https://github.com/gregdavill/lambdasoc.git
-[submodule "gateware/deps/nmigen-stdio"]
-	path = gateware/deps/nmigen-stdio
-	url = https://github.com/nmigen/nmigen-stdio.git
 [submodule "gateware/deps/minerva"]
 	path = gateware/deps/minerva
 	url = https://github.com/lambdaconcept/minerva.git
@@ -41,3 +32,12 @@
 [submodule "gateware/deps/litespi"]
 	path = gateware/deps/litespi
 	url = https://github.com/litex-hub/litespi.git
+[submodule "gateware/deps/amaranth"]
+	path = gateware/deps/amaranth
+	url = https://github.com/amaranth-lang/amaranth.git
+[submodule "gateware/deps/amaranth-soc"]
+	path = gateware/deps/amaranth-soc
+	url = https://github.com/amaranth-lang/amaranth-soc.git
+[submodule "gateware/deps/amaranth-stdio"]
+	path = gateware/deps/amaranth-stdio
+	url = https://github.com/amaranth-lang/amaranth-stdio.git
