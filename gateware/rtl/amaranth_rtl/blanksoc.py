@@ -6,8 +6,8 @@ import os
 import datetime
 import logging
 
-from nmigen                  import Elaboratable, Module
-from nmigen_soc              import wishbone
+from amaranth                  import Elaboratable, Module
+from amaranth_soc              import wishbone
 
 from luna.gateware.soc                       import SimpleSoC
 
@@ -42,7 +42,6 @@ class BlankSoC(SimpleSoC):
 
         # Create our bus decoder and set up our memory map.
         self.bus_decoder = wishbone.Decoder(addr_width=30, data_width=32, granularity=8, features={"cti", "bte"})
-        self.memory_map  = self.bus_decoder.bus.memory_map
 
     def _emit_minerva_basics(self, emit):
         # These are LiteX headers adapt pending_irqs

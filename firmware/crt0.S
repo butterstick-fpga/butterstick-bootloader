@@ -1,5 +1,5 @@
 .global main
-.global isr
+.global app_isr
 .global _start
 
 _start:
@@ -37,7 +37,7 @@ trap_entry:
   sw x30, -15*4(sp)
   sw x31, -16*4(sp)
   addi sp,sp,-16*4
-  call isr
+  call app_isr
   lw x1 , 15*4(sp)
   lw x5,  14*4(sp)
   lw x6,  13*4(sp)

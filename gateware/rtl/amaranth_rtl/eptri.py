@@ -9,15 +9,15 @@ import sys
 import logging
 import os.path
 
-from nmigen import Elaboratable, Module, ResetSignal, Signal
-from nmigen.hdl.rec import Record
-from nmigen_soc import wishbone
+from amaranth import Elaboratable, Module, ResetSignal, Signal
+from amaranth.hdl.rec import Record
+from amaranth_soc import wishbone
 
 from luna.gateware.usb.usb2.device import USBDevice, USBDeviceController
 from luna.gateware.architecture.car import PHYResetController
 from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOInterface, OutFIFOInterface
 
-from nmigen.hdl.rec import Direction
+from amaranth.hdl.rec import Direction
 
 
 from .blanksoc import BlankSoC
@@ -48,7 +48,6 @@ class LunaEpTri(Elaboratable):
         )
 
         self.soc = soc = BlankSoC()
-        self.bus = self.soc.bus_decoder.bus
 
         self.usb_holdoff = Signal()
  
@@ -65,6 +64,9 @@ class LunaEpTri(Elaboratable):
 
         self.usb_out_ep = OutFIFOInterface()
         self.add_peripheral(self.usb_out_ep, addr=self.USB_OUT_ADDRESS + base_addr)
+
+        # Pulling out the bus, freezes the decoder, so this needs to be done at the end.
+        self.bus = self.soc.bus_decoder.bus
 
     def add_peripheral(self, p, **kwargs):
         """ Adds a peripheral to the SoC.

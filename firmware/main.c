@@ -87,7 +87,7 @@ static void timer_isr(void)
 	++system_ticks;
 }
 
-void isr(void)
+void app_isr(void)
 {
 	unsigned int irqs;
 	irqs = irq_pending() & irq_getmask();

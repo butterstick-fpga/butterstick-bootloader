@@ -35,7 +35,6 @@ from litex.soc.interconnect.csr import *
 from litex.soc.cores.clock import *
 from litex.soc.cores.clock.common import period_ns
 from litex.soc.cores.gpio import GPIOOut, GPIOIn
-from litex.soc.cores.spi_flash import SpiFlashDualQuad
 
 from rtl.platform import butterstick_r1d0
 from rtl.eptri import LunaEpTriWrapper
@@ -232,6 +231,7 @@ def CreateFirmwareInit(init, output_file):
 def main():
     parser = argparse.ArgumentParser(description="LiteX based Bootloader on ButterStick")
     builder_args(parser)
+    soc_core_args(parser)
     trellis_args(parser)
     # parser.add_argument("--device", default="25F",
     #                     help="ECP5 device (default=25F)")
@@ -243,7 +243,7 @@ def main():
     )
     args = parser.parse_args()
 
-    soc = BaseSoC(**argdict(args))
+    soc = BaseSoC(**soc_core_argdict(args))
     builder = Builder(soc, **builder_argdict(args))
     
 
