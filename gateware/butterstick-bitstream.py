@@ -231,6 +231,7 @@ def CreateFirmwareInit(init, output_file):
 def main():
     parser = argparse.ArgumentParser(description="LiteX based Bootloader on ButterStick")
     builder_args(parser)
+    soc_core_args(parser)
     trellis_args(parser)
     # parser.add_argument("--device", default="25F",
     #                     help="ECP5 device (default=25F)")
@@ -242,7 +243,7 @@ def main():
     )
     args = parser.parse_args()
 
-    soc = BaseSoC(**argdict(args))
+    soc = BaseSoC(**soc_core_argdict(args))
     builder = Builder(soc, **builder_argdict(args))
     
 
