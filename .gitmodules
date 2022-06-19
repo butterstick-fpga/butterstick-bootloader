@@ -1,10 +1,6 @@
 [submodule "gateware/deps/luna"]
 	path = gateware/deps/luna
 	url = https://github.com/greatscottgadgets/luna.git
-[submodule "firmware/deps/tinyusb"]
-	path = firmware/deps/tinyusb
-	url = https://github.com/hathach/tinyusb.git
-	branch = luna_riscv
 [submodule "gateware/deps/migen"]
 	path = gateware/deps/migen
 	url = https://github.com/m-labs/migen.git
@@ -43,3 +39,6 @@
 	url = https://github.com/amaranth-lang/amaranth-stdio.git
 [submodule "deps/lambdasoc"]
 	url = https://github.com/lambdaconcept/lambdasoc.git
+[submodule "firmware/deps/tinyusb"]
+	path = firmware/deps/tinyusb
+	url = https://github.com/hathach/tinyusb_src.git

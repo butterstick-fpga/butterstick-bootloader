@@ -27,7 +27,7 @@
  */
 
 #include "tusb_option.h"
-#include "bsp/board.h"
+#include "board.h"
 
 #if TUSB_OPT_DEVICE_ENABLED && (CFG_TUSB_MCU == OPT_MCU_LUNA_EPTRI)
 

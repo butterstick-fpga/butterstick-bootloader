@@ -135,7 +135,7 @@ int spiflash_write_stream(uint32_t addr, uint8_t *stream, int len)
 			}
 
 			spiflash_write_enable();
-			page_program(addr+offset, stream+offset, w_len);
+			spiflash_page_program(addr+offset, stream+offset, w_len);
 
 			while(spiflash_read_status_register() & 1){}
 
