@@ -6,8 +6,8 @@ import os
 import datetime
 import logging
 
-from nmigen                  import Elaboratable, Module
-from nmigen_soc              import wishbone
+from amaranth                  import Elaboratable, Module
+from amaranth_soc              import wishbone
 
 from luna.gateware.soc                       import SimpleSoC
 

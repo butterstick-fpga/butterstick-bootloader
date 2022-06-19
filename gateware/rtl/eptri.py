@@ -7,7 +7,7 @@ from migen import *
 from litex.soc.interconnect import wishbone
 
 from litex.build.io import DDROutput
-from rtl.nmigen_rtl.eptri import LunaEpTri
+from rtl.amaranth_rtl.eptri import LunaEpTri
 
 
 from litex.soc.interconnect.csr_eventmanager import *
@@ -100,7 +100,7 @@ class LunaEpTriWrapper(Module):
 
         resource_file = os.path.join(vdir, resource_file)
         with open(resource_file, 'w') as f:
-            self.nmigen_module.soc.generate_c_header(macro_name="LUNA_EPTRI", file=f, platform_name="LiteX Butterstick Bootloader")
+            self.amaranth_module.soc.generate_c_header(macro_name="LUNA_EPTRI", file=f, platform_name="LiteX Butterstick Bootloader")
 
 
 
@@ -108,8 +108,8 @@ class LunaEpTriWrapper(Module):
 
     ## Wrapper 
     def wrapper(self, name, elaboratable):
-        from nmigen import Record, Signal
-        from nmigen.back import verilog
+        from amaranth import Record, Signal
+        from amaranth.back import verilog
 
         ports = []
 
@@ -123,5 +123,5 @@ class LunaEpTriWrapper(Module):
         self.verilog = verilog.convert(elaboratable, name=name, ports=ports, strip_internal_attrs=False)
         self.verilog_name = name
 
-        self.nmigen_module = elaboratable
+        self.amaranth_module = elaboratable
         

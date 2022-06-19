@@ -9,15 +9,15 @@ import sys
 import logging
 import os.path
 
-from nmigen import Elaboratable, Module, ResetSignal, Signal
-from nmigen.hdl.rec import Record
-from nmigen_soc import wishbone
+from amaranth import Elaboratable, Module, ResetSignal, Signal
+from amaranth.hdl.rec import Record
+from amaranth_soc import wishbone
 
 from luna.gateware.usb.usb2.device import USBDevice, USBDeviceController
 from luna.gateware.architecture.car import PHYResetController
 from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOInterface, OutFIFOInterface
 
-from nmigen.hdl.rec import Direction
+from amaranth.hdl.rec import Direction
 
 
 from .blanksoc import BlankSoC
