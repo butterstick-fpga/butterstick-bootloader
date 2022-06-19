@@ -299,7 +299,7 @@ def main():
 
     dfu_file = os.path.join(builder.gateware_dir, f"{soc.platform.name}.dfu")
     shutil.copyfile(output_bitstream, dfu_file)
-    os.system(f"dfu-suffix -v 1209 -p 5bf0 -a {dfu_file}")
+    os.system(f"dfu-suffix -v 1209 -p 5bf1 -a {dfu_file}")
 
 
 def argdict(args):
