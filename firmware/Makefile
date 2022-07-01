@@ -19,8 +19,7 @@ TINYUSB_SRC := 	$(TINYUSB_DIR)/src/tusb.c \
 
 TINYUSB_OBJ := $(notdir $(TINYUSB_SRC:.c=.o))
 
-CFLAGS += 	-I$(TINYUSB_DIR)/hw \
-			-I$(TINYUSB_DIR)/src \
+CFLAGS += 	-I$(TINYUSB_DIR)/src \
 			-DCFG_TUSB_MCU=OPT_MCU_LUNA_EPTRI \
 			-fdata-sections -ffunction-sections -fsingle-precision-constant -fno-strict-aliasing \
 			-DCFG_TUSB_DEBUG=1
