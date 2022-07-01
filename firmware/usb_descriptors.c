@@ -35,19 +35,11 @@ tusb_desc_device_t const desc_device =
 {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
-    .bcdUSB             = 0x0200,
+    .bcdUSB             = 0x0210,
 
-  #if CFG_TUD_CDC
-    // Use Interface Association Descriptor (IAD) for CDC
-    // As required by USB Specs IAD's subclass must be common class (2) and protocol must be IAD (1)
-    .bDeviceClass       = TUSB_CLASS_MISC,
-    .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
-    .bDeviceProtocol    = MISC_PROTOCOL_IAD,
-  #else
     .bDeviceClass       = 0x00,
     .bDeviceSubClass    = 0x00,
     .bDeviceProtocol    = 0x00,
-  #endif
 
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
@@ -140,31 +132,73 @@ char const* string_desc_arr [] =
   "flash @0x000000 (bootloader)",               // 7: DFU alt3 name
 };
 
-// Microsoft Compatible ID Feature Descriptor
-#define MSFT_VENDOR_CODE    '~'     // Arbitrary, but should be printable ASCII
-#define MSFT_WCID_LEN       40
+//--------------------------------------------------------------------+
+// BOS Descriptor
+//--------------------------------------------------------------------+
 
-// Microsoft OS String Descriptor. See: https://github.com/pbatard/libwdi/wiki/WCID-Devices
-static const uint16_t usb_string_microsoft = {0x0318, 'M','S','F','T','1','0','0', MSFT_VENDOR_CODE};
- 
-// Microsoft WCID
-const uint8_t usb_microsoft_wcid[MSFT_WCID_LEN] = {
-    MSFT_WCID_LEN, 0, 0, 0,         // Length
-    0x00, 0x01,                     // Version
-    0x04, 0x00,                     // Compatibility ID descriptor index
-    0x01,                           // Number of sections
-    0, 0, 0, 0, 0, 0, 0,            // Reserved (7 bytes)
+/* Microsoft OS 2.0 registry property descriptor
+Per MS requirements https://msdn.microsoft.com/en-us/library/windows/hardware/hh450799(v=vs.85).aspx
+device should create DeviceInterfaceGUIDs. It can be done by driver and
+in case of real PnP solution device should expose MS "Microsoft OS 2.0
+registry property descriptor". Such descriptor can insert any record
+into Windows registry per device/configuration/interface. In our case it
+will insert "DeviceInterfaceGUIDs" multistring property.
+GUID is freshly generated and should be OK to use.
+https://developers.google.com/web/fundamentals/native-hardware/build-for-webusb/
+(Section Microsoft OS compatibility descriptors)
+*/
 
-    0,                              // Interface number
-    0x01,                           // Reserved
-    'W','I','N','U','S','B',0,0,    // Compatible ID
-    0,0,0,0,0,0,0,0,                // Sub-compatible ID (unused)
-    0,0,0,0,0,0,                    // Reserved
+#define BOS_TOTAL_LEN      (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
+
+#define MS_OS_20_DESC_LEN  (0xA2)
+
+enum
+{
+  VENDOR_REQUEST_MICROSOFT = 1,
 };
 
+// BOS Descriptor is required for webUSB
+uint8_t const desc_bos[] =
+{
+  // total length, number of device caps
+  TUD_BOS_DESCRIPTOR(BOS_TOTAL_LEN, 1),
+
+  // Microsoft OS 2.0 descriptor
+  TUD_BOS_MS_OS_20_DESCRIPTOR(MS_OS_20_DESC_LEN, VENDOR_REQUEST_MICROSOFT)
+};
+
+uint8_t const * tud_descriptor_bos_cb(void)
+{
+  return desc_bos;
+}
+
+
+uint8_t const desc_ms_os_20[] =
+{
+  // Set header: length, type, windows version, total length
+  U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR), U32_TO_U8S_LE(0x06030000), U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
+
+  // MS OS 2.0 Compatible ID descriptor: length, type, compatible ID, sub compatible ID
+  U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID), 'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // sub-compatible
+
+  // MS OS 2.0 Registry property descriptor: length, type
+  U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x14), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+  U16_TO_U8S_LE(0x0007), U16_TO_U8S_LE(0x002A), // wPropertyDataType, wPropertyNameLength and PropertyName "DeviceInterfaceGUIDs\0" in UTF-16
+  'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00,
+  'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,
+  U16_TO_U8S_LE(0x0050), // wPropertyDataLength
+	//bPropertyData: "{8ae012f6-1f9d-4124-831a-4b24d888df7a}" Generated for butterstick-dfu
+  '{', 0x00, '8', 0x00, 'a', 0x00, 'e', 0x00, '0', 0x00, '1', 0x00, '2', 0x00, 'f', 0x00, '6', 0x00, '-', 0x00, 
+  '1', 0x00, 'f', 0x00, '9', 0x00, 'd', 0x00, '-', 0x00, '4', 0x00, '1', 0x00, '2', 0x00, '4', 0x00, '-', 0x00, 
+  '8', 0x00, '3', 0x00, '1', 0x00, 'a', 0x00, '-', 0x00, '4', 0x00, 'b', 0x00, '2', 0x00, '4', 0x00, 'd', 0x00, 
+  '8', 0x00, '8', 0x00, '8', 0x00, 'd', 0x00, 'f', 0x00, '7', 0x00, 'a', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+TU_VERIFY_STATIC(sizeof(desc_ms_os_20) == MS_OS_20_DESC_LEN, "Incorrect size");
 
 //--------------------------------------------------------------------+
-// WCID use vendor class
+// BOS/WCID vendor class
 //--------------------------------------------------------------------+
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request)
 {
@@ -176,17 +210,22 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
     case TUSB_REQ_TYPE_VENDOR:
       switch (request->bRequest)
       {
-        case MSFT_VENDOR_CODE:
-          if ( request->wIndex == 0x0004 )
+        case VENDOR_REQUEST_MICROSOFT:
+          if ( request->wIndex == 7 )
           {
-            // Return a Microsoft Compatible ID Feature Descriptor
-            return tud_control_xfer(rhport, request, (void*) usb_microsoft_wcid, MSFT_WCID_LEN);
+            // Get Microsoft OS 2.0 compatible descriptor
+            uint16_t total_len;
+            memcpy(&total_len, desc_ms_os_20+8, 2);
+
+            return tud_control_xfer(rhport, request, (void*)(uintptr_t) desc_ms_os_20, total_len);
+          }else
+          {
+            return false;
           }
-          break;
+
         default: break;
       }
     break;
-
 
     default: break;
   }
@@ -237,12 +276,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
   }
   else
   {
-    // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
-    // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
-    if(index == 0xEE){
-      return usb_string_microsoft;
-    }
-
+    
     if ( !(index < sizeof(string_desc_arr)/sizeof(string_desc_arr[0])) ) return NULL;
 
     const char* str = string_desc_arr[index];
