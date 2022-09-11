@@ -140,13 +140,7 @@ static void process_rx(void) {
 		rx_buffer[rx_ep] = NULL;
 		uint16_t len = rx_buffer_offset[rx_ep];
 
-
-		// Re-enable our OUT endpoint, as we've consumed all data from it.
-		usb_out_ep_enable_write(1);
-
 		dcd_event_xfer_complete(0, tu_edpt_addr(rx_ep, TUSB_DIR_OUT), len, XFER_RESULT_SUCCESS, true);
-
-
 	}
 	else {
 		// If there's more data, re-enable data reception.
