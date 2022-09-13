@@ -212,17 +212,7 @@ int main(int i, char **c)
 
 			if (complete_timeout)
 			{
-				static uint32_t start_ms = 0;
-
-				// timeout in ms
-				if (board_millis() != start_ms)
-				{
-					start_ms = board_millis();
-
-					complete_timeout--;
-					if (complete_timeout == 0)
-						break;
-				}
+				break;
 			}
 		}
 	}
@@ -230,13 +220,14 @@ int main(int i, char **c)
 	/* Reboot to our user bitstream */
 	irq_setie(0);
 	usb_device_controller_connect_write(0);
-	msleep(20);
 
 	if (spiflash_protection_read() == false)
 	{
 		spiflash_protection_write(true);
 	}
 
+	msleep(50);
+	
 	while (1)
 	{
 		reset_out_write(1);
@@ -526,5 +517,5 @@ void tud_dfu_abort_cb(uint8_t alt)
 void tud_dfu_detach_cb(void)
 {
 	blink_interval_ms = BLINK_DFU_SLEEP;
-	complete_timeout = 100;
+	complete_timeout = 1;
 }
