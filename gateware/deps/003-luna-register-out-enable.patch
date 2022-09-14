@@ -1,0 +1,29 @@
+diff --git a/luna/gateware/usb/usb2/interfaces/eptri.py b/luna/gateware/usb/usb2/interfaces/eptri.py
+index 6cb3954..0b77a9f 100644
+--- a/luna/gateware/usb/usb2/interfaces/eptri.py
++++ b/luna/gateware/usb/usb2/interfaces/eptri.py
+@@ -636,14 +636,22 @@ class OutFIFOInterface(Peripheral, Elaboratable):
+             SyncFIFOBuffered(width=8, depth=self._max_packet_size)
+         )
+ 
++        enabled = Signal()
++        primed = Signal()
++        with m.If(token.new_token):
++            m.d.usb += [
++                enabled.eq(self.enable.r_data),
++                primed.eq(endpoint_primed[token.endpoint])
++            ]
++
+         # Shortcut for when we should allow a receive. We'll read when:
+         #  - Our `epno` register matches the target register; and
+         #  - We've primed the relevant endpoint.
+         #  - Our most recent token is an OUT.
+         #  - We're not stalled.
+         stalled          = token.is_out & endpoint_stalled[token.endpoint]
+-        endpoint_primed  = endpoint_primed[token.endpoint]
+-        ready_to_receive = endpoint_primed & self.enable.r_data & ~stalled
++        endpoint_primed  = primed
++        ready_to_receive = endpoint_primed & enabled & ~stalled
+         allow_receive    = token.is_out & ready_to_receive
+         nak_receives     = token.is_out & ~ready_to_receive & ~stalled
+ 

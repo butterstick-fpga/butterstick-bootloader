@@ -44,6 +44,7 @@ jobs:
       run: |
         git apply --verbose --no-index --directory=gateware/deps/luna 001-luna-connect.patch
         git apply --verbose --no-index --directory=gateware/deps/lambdasoc 002-lambdasoc-version.patch
+        git apply --verbose --no-index --directory=gateware/deps/luna 003-luna-register-out-enable.patch
 
     - name: Litex build
       working-directory: ./gateware
