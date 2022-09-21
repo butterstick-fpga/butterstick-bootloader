@@ -37,6 +37,8 @@ memory_offest const alt_offsets[] = {
 };
 
 static int complete_timeout;
+static bool flash_command_seen = false;
+static bool bus_reset_received = false;
 static bool bl_upgrade = false;
 
 /* Blink pattern
@@ -92,10 +94,17 @@ void app_isr(void)
 	unsigned int irqs;
 	irqs = irq_pending() & irq_getmask();
 
+
 	// Dispatch USB events.
 	if (irqs & (1 << USB_DEVICE_CONTROLLER_INTERRUPT | 1 << USB_IN_EP_INTERRUPT | 1 << USB_OUT_EP_INTERRUPT | 1 << USB_SETUP_INTERRUPT))
 	{
 		tud_int_handler(0);
+	}
+
+	/* Monitor bus resets */
+	if(irqs & (1 << USB_DEVICE_CONTROLLER_INTERRUPT))
+	{
+		bus_reset_received = true;
 	}
 
 	// Dispatch timer events.
@@ -210,9 +219,13 @@ int main(int i, char **c)
 				button_count = board_millis();
 			}
 
-			if (complete_timeout)
+			if (bus_reset_received)
 			{
-				break;
+				bus_reset_received = false;
+				if(flash_command_seen)
+				{
+					break;
+				}
 			}
 		}
 	}
@@ -445,6 +458,7 @@ void tud_dfu_download_cb(uint8_t alt, uint16_t block_num, uint8_t const *data, u
 	(void)block_num;
 
 	blink_interval_ms = BLINK_DFU_DOWNLOAD;
+	flash_command_seen = true;
 
 	if ((block_num * CFG_TUD_DFU_XFER_BUFSIZE) >= alt_offsets[alt].length)
 	{
@@ -517,5 +531,4 @@ void tud_dfu_abort_cb(uint8_t alt)
 void tud_dfu_detach_cb(void)
 {
 	blink_interval_ms = BLINK_DFU_SLEEP;
-	complete_timeout = 1;
 }
