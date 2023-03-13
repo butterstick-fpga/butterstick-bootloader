@@ -3,7 +3,6 @@ name: ci-build
 on:
   push:
 
-
 jobs:
   # Main build, creates firmware update image
   build-soc:
@@ -21,7 +20,7 @@ jobs:
         git submodule update --init --recursive -- gateware/deps/pythondata-software-picolibc
 
     - name: YosysHQ setup
-      uses: YosysHQ/setup-oss-cad-suite@v1
+      uses: YosysHQ/setup-oss-cad-suite@v2
       
     - name: RISC-V GNU setup
       uses: gregdavill/setup-riscv-gnu-toolchain@v1.0
